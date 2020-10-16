@@ -142,6 +142,88 @@ def generate_random_patch(self, input_path):
         else:
             H = random.randint(0, shape_scans[2] - self.patch_dim[2])
 
+    elif self.cropping == 'sous-maxs':
+        min_3D_d, max_3D_d = self.min_locations_dict['sous-max d'], self.max_locations_dict['sous-max d']
+        min_3D_g, max_3D_g = self.min_locations_dict['sous-max g'], self.max_locations_dict['sous-max g']
+
+        min_3D = []
+        for x,y in zip(min_3D_d, min_3D_g):
+            min_3D.append(min(x,y))
+        
+        max_3D = []
+        for x,y in zip(max_3D_d, max_3D_g):
+            max_3D.append(max(x,y))
+
+        # L (shape_scans[0] is constant at 512 for now)
+        if (max_3D[0] - min_3D[0] >= self.patch_dim[0]):
+            L = random.randint(min_3D[0], max_3D[0] - self.patch_dim[0])
+        else:
+            if max_3D[0] >= self.patch_dim[0]:
+                L = random.randint(max_3D[0] - self.patch_dim[0], min(min_3D[0], self.patch_dim[0]))
+            else:
+                L = random.randint(0, min(min_3D[0], self.patch_dim[0]))
+        
+        # W (shape_scans[1] is constant at 512 for now)
+        if (max_3D[1] - min_3D[1] >= self.patch_dim[1]):
+            W = random.randint(min_3D[1], max_3D[1] - self.patch_dim[1])
+        else:
+            if max_3D[1] >= self.patch_dim[1]:
+                W = random.randint(max_3D[1] - self.patch_dim[1], min(min_3D[1], self.patch_dim[1]))
+            else:
+                W = random.randint(0, min(min_3D[1], self.patch_dim[1]))
+
+        # H (shape_scans[2] is NOT constant at around 200-400 with some particular cases at around 100)
+        #print(shape_scans[2], min_3D[2], max_3D[2])
+
+        if shape_scans[2] >= max_3D[2]:
+            if (max_3D[2] - min_3D[2] >= self.patch_dim[2]):
+                H = random.randint(min_3D[2], max_3D[2] - self.patch_dim[2])
+            else:
+                H = random.randint(max_3D[2] - self.patch_dim[2], min_3D[2])
+        else:
+            H = random.randint(0, shape_scans[2] - self.patch_dim[2])
+
+    elif self.cropping == 'oreilles':
+        min_3D_d, max_3D_d = self.min_locations_dict['oreille int d'], self.max_locations_dict['oreille int d']
+        min_3D_g, max_3D_g = self.min_locations_dict['oreille int g'], self.max_locations_dict['oreille int g']
+
+        min_3D = []
+        for x,y in zip(min_3D_d, min_3D_g):
+            min_3D.append(min(x,y))
+        
+        max_3D = []
+        for x,y in zip(max_3D_d, max_3D_g):
+            max_3D.append(max(x,y))
+
+        # L (shape_scans[0] is constant at 512 for now)
+        if (max_3D[0] - min_3D[0] >= self.patch_dim[0]):
+            L = random.randint(min_3D[0], max_3D[0] - self.patch_dim[0])
+        else:
+            if max_3D[0] >= self.patch_dim[0]:
+                L = random.randint(max_3D[0] - self.patch_dim[0], min(min_3D[0], self.patch_dim[0]))
+            else:
+                L = random.randint(0, min(min_3D[0], self.patch_dim[0]))
+        
+        # W (shape_scans[1] is constant at 512 for now)
+        if (max_3D[1] - min_3D[1] >= self.patch_dim[1]):
+            W = random.randint(min_3D[1], max_3D[1] - self.patch_dim[1])
+        else:
+            if max_3D[1] >= self.patch_dim[1]:
+                W = random.randint(max_3D[1] - self.patch_dim[1], min(min_3D[1], self.patch_dim[1]))
+            else:
+                W = random.randint(0, min(min_3D[1], self.patch_dim[1]))
+
+        # H (shape_scans[2] is NOT constant at around 200-400 with some particular cases at around 100)
+        #print(shape_scans[2], min_3D[2], max_3D[2])
+
+        if shape_scans[2] >= max_3D[2]:
+            if (max_3D[2] - min_3D[2] >= self.patch_dim[2]):
+                H = random.randint(min_3D[2], max_3D[2] - self.patch_dim[2])
+            else:
+                H = random.randint(max_3D[2] - self.patch_dim[2], min_3D[2])
+        else:
+            H = random.randint(0, shape_scans[2] - self.patch_dim[2])
+
     
     else:
         # Random
