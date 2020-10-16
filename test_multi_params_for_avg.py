@@ -21,7 +21,7 @@ from pathlib import Path
 import csv
 
 ###############################################
-## Limit memory allocation to minimum needed # TOTEST
+## Limit memory allocation to minimum needed
 ###############################################
 config = tf.ConfigProto()
 config.gpu_options.allow_growth = True
@@ -67,8 +67,16 @@ if len(sys.argv) >=7:
         oar_colors = ['red', 'orange', 'yellow', 'gold', 'lime', 'green', 'green', 'aquamarine', 'cyan', 'deepskyblue', 'deepskyblue', 'blue', 'blue', 'purple', 'purple', 'magenta', 'deeppink']
     elif kind_of_oars == 'parotides':
         list_oars = ['parotide d', 'parotide g']
+        left_right = True
     elif kind_of_oars == 'yeux':
         list_oars = ['oeil d', 'oeil g']
+        left_right = True
+    elif kind_of_oars == 'sous-maxs':
+        list_oars = ['sous-max d', 'sous-max g']
+        left_right = True
+    elif kind_of_oars == 'oreilles':
+        list_oars = ['oreille int d', 'oreille int g']
+        left_right = True
     else:
         if kind_of_oars in all_oars:
             list_oars = [kind_of_oars]
