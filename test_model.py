@@ -6,8 +6,6 @@ import numpy as np
 
 # DeepL
 import keras
-from unet_seg_v2_weird import unet
-#from unet_seg_v3 import unet
 import tensorflow as tf
 
 # IO
@@ -21,7 +19,7 @@ from pathlib import Path
 import csv
 
 ###############################################
-## Limit memory allocation to minimum needed
+## Limit memory allocation to minimum needed # TOTEST
 ###############################################
 config = tf.ConfigProto()
 config.gpu_options.allow_growth = True
@@ -46,16 +44,26 @@ def parse_IDs(list_of_IDs):
 dropout_value = 0.0
 n_convolutions_per_block = 2
 
-if len(sys.argv) >=7:
+if len(sys.argv) >=6:
     path_to_model_dir = sys.argv[1]
     model_name = sys.argv[2]
-    optim = sys.argv[3]
-    lr = sys.argv[4]
+    model_depth = sys.argv[3]
+    kind_of_oars = sys.argv[4]
+    train_validation_or_test_or_manual = sys.argv[5]
+    if train_validation_or_test_or_manual == 'manual':
+        list_IDs_if_manual = sys.argv[6]
+
+    # Manage model depth
+    if model_depth == '64':
+        from unet_seg_64 import unet
+    elif model_depth == '512':
+        from unet_seg_512 import unet
+    else:
+        raise NameError('Unhandled model depth: ' + model_depth)
 
     # Manage OARs
-    all_oars = ["canal medullaire", "canal medul pv", "oesophage", "cavite orale", "mandibule", "parotide g", "parotide d", "tronc", "trachee", "oreille int g", "oreille int d", "oeil g", "oeil d", "sous-max g", "sous-max d", "tronc pv", "nerf optique g"]
-    kind_of_oars = sys.argv[5]
-    
+    all_oars = ["canal medullaire", "canal medul pv", "oesophage", "cavite orale", "mandibule", "parotide g", "parotide d", "tronc", "tronc pv", "trachee", "oreille int g", "oreille int d", "oeil g", "oeil d", "sous-max g", "sous-max d", "nerf optique g"]
+
     if kind_of_oars == 'down':
         list_oars = ["canal medullaire", "canal medul pv", "cavite orale", "oesophage", "mandibule", "tronc", "trachee", "tronc pv"]
         oar_colors = ['red', 'orange', 'yellow', 'gold', 'lime', 'aquamarine', 'cyan', 'magenta']
@@ -77,6 +85,7 @@ if len(sys.argv) >=7:
     elif kind_of_oars == 'oreilles':
         list_oars = ['oreille int d', 'oreille int g']
         left_right = True
+    # HANDLES SINGLE ORGAN SEG
     else:
         if kind_of_oars in all_oars:
             list_oars = [kind_of_oars]
@@ -89,15 +98,12 @@ if len(sys.argv) >=7:
     for oar in all_oars:
         dict_oars[oar] = count
         count += 1
-
-    # Manage test set
-    validation_or_test_or_manual = sys.argv[6]
-    if validation_or_test_or_manual == 'manual':
-        list_IDs_if_manual = sys.argv[7]
+   
 
 else:
     print("Wrong number of arguments, see example below.")
-    print("python test_multi.py path_to_model_dir model_name optim lr kind_of_oars validation_or_test_or_manual list_IDs_if_manual")
+    print("python test_multi_params_for_avg.py path_to_model_dir model_name model_depth kind_of_oars train_validation_or_test_or_manual list_IDs_if_manual")
+    print("    -> format for model_depth: 64 or 512")    
     print("    -> format for kind_of_oars: up or down or all or OAR_NAME")
     print("    -> format for list_IDs_if_manual: XXXXX-XXXXX-XXXXX-...")
     sys.exit()
@@ -136,20 +142,20 @@ L, W = 512//2 - patch_dim[1]//2, 64
 cmaps = ['Greys', 'Purples', 'Blues', 'Greens', 'Oranges', 'Reds', 'YlOrBr', 'YlOrRd', 'OrRd', 'PuRd', 'RdPu', 'BuPu', 'GnBu', 'PuBu', 'YlGnBu', 'PuBuGn', 'BuGn']
 oars_colors_dict = {'canal medullaire': 'red',
                     'canal medul pv': 'orange',
-                    'oesophage': 'yellow',
+                    'oesophage': 'green',
                     'cavite orale': 'gold',
-                    'mandibule': 'lime',
-                    'parotide g': 'green',
-                    'parotide d': 'green',
-                    'tronc': 'aquamarine',
-                    'trachee': 'cyan',
+                    'mandibule': 'yellow',
+                    'parotide g': 'blue',
+                    'parotide d': 'blue',
+                    'tronc': 'cyan',
+                    'tronc pv': 'aquamarine',
+                    'trachee': 'lime',
                     'oreille int g': 'deepskyblue',
                     'oreille int d': 'deepskyblue',
-                    'oeil g': 'blue',
-                    'oeil d': 'blue',
-                    'sous-max g': 'purple',
-                    'sous-max d': 'purple',
-                    'tronc pv': 'magenta',
+                    'oeil g': 'purple',
+                    'oeil d': 'purple',
+                    'sous-max g': 'magenta',
+                    'sous-max d': 'magenta',
                     'nerf optique g': 'deeppink'}
 #oar_colors = ['red', 'orange', 'yellow', 'gold', 'lime', 'green', 'green', 'aquamarine', 'cyan', 'deepskyblue', 'deepskyblue', 'blue', 'blue', 'purple', 'purple', 'magenta', 'deeppink']
 #oar_colors = ['red', 'orange', 'yellow', 'gold', 'lime', 'green', 'aquamarine', 'cyan']
@@ -164,16 +170,17 @@ extra_volumes = ['ptv 1', 'gtv 1', 'ctv 1']
 
 ## Loading
 # Load model
+optim, lr = 'adam', '5e-4' # doesn't matter at test time
 model = unet((patch_dim[0], patch_dim[1], patch_dim[2], n_input_channels), n_output_channels, float(dropout_value), int(n_convolutions_per_block), optim, float(lr))
 model.summary()
 
 model.load_weights(os.path.join(path_to_model_dir, model_name))
 
 # Load data IDs
-list_IDs = parse_IDs(list_IDs_if_manual) if (validation_or_test_or_manual == "manual") else (np.load(os.path.join(path_to_model_dir, validation_or_test_or_manual + "_IDs.npy")))
+list_IDs = parse_IDs(list_IDs_if_manual) if (train_validation_or_test_or_manual == "manual") else (np.load(os.path.join(path_to_model_dir, validation_or_test_or_manual + "_IDs.npy")))
 
 # Saving results
-path_to_results = os.path.join(path_to_model_dir, 'results_' + validation_or_test_or_manual)
+path_to_results = os.path.join(path_to_model_dir, 'results_' + train_validation_or_test_or_manual)
 path_to_expected_volume = os.path.join(path_to_results, 'expected')
 path_to_predicted_volume = os.path.join(path_to_results, 'predicted')
 
@@ -189,7 +196,7 @@ dice_coeff_all = np.zeros(n_output_channels+1)
 count = 0
 
 if generate_dice_scores:
-    csv_file = open(os.path.join(path_to_results, validation_or_test_or_manual + '_dice_scores.csv'), 'w', newline='')
+    csv_file = open(os.path.join(path_to_results, train_validation_or_test_or_manual + '_dice_scores.csv'), 'w', newline='')
     fieldnames = ['ID'] + [oar_name for oar_name in [kind_of_oars]] + ['average']
     writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
     writer.writeheader()
@@ -248,7 +255,7 @@ for ID in list_IDs:
     plt.close()
     '''
 
-    '''
+    #'''
     # Summed masks
     if generate_summed_masks:
 
@@ -282,8 +289,9 @@ for ID in list_IDs:
         # Save
         fig2.savefig(os.path.join(path_to_expected_volume_for_ID, 'summed_masks'))
         plt.close()
+        #sys.exit()
 
-    '''
+    #'''
    
     #'''
     ##########################
