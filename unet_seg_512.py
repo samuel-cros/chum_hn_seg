@@ -30,10 +30,12 @@ def conv_block(output_size, previous_layer, n_convolutions, activation, kernel_i
     # Convolve
     block = previous_layer
     for i in range(n_convolutions):
-        block = Conv3D(output_size, kernel_size = 3, activation = activation, padding = 'same', kernel_initializer = kernel_initializer)(block)
-    # BN
-    if batch_norm:
-        block = BatchNormalization()(block)
+        block = Conv3D(output_size, kernel_size = 3, padding = 'same', kernel_initializer = kernel_initializer)(block)
+        # BN
+        if batch_norm:
+            block = BatchNormalization()(block)
+    # Activate
+    block = Activation(activation)(block)    
     # Pool
     pool = MaxPooling3D(pool_size=(2,2,2))(block)
     # Dropout
@@ -44,17 +46,22 @@ def conv_block(output_size, previous_layer, n_convolutions, activation, kernel_i
 def up_conv_block(output_size, previous_layer, skip_connections_layer, n_convolutions, activation, kernel_initializer, batch_norm, dropout):
     block = previous_layer
     # Deconvolve
-    block = Conv3DTranspose(output_size, kernel_size = 3, activation = activation, padding = 'same', kernel_initializer = kernel_initializer)(UpSampling3D(size = (2,2,2))(block))
+    block = Conv3DTranspose(output_size, kernel_size = 3, padding = 'same', kernel_initializer = kernel_initializer)(UpSampling3D(size = (2,2,2))(block))
     # BN
     if batch_norm:
         block = BatchNormalization()(block)
+    # Activate
+    block = Activation(activation)(block)
+    # Concatenate
     block = concatenate([skip_connections_layer, block], axis = 4)
     # Convolve
     for i in range(n_convolutions):
-        block = Conv3D(output_size, kernel_size = 3, activation = activation, padding = 'same', kernel_initializer = kernel_initializer)(block)
-    # BN
-    if batch_norm:
-        block = BatchNormalization()(block)
+        block = Conv3D(output_size, kernel_size = 3, padding = 'same', kernel_initializer = kernel_initializer)(block)
+        # BN
+        if batch_norm:
+            block = BatchNormalization()(block)
+    # Activate
+    block = Activation(activation)(block)
     # Dropout
     if dropout > 0.0:
         block = Dropout(dropout)(block)
@@ -128,7 +135,7 @@ def unet(input_size, n_output_channels, dropout_value, n_convolutions_per_block,
     #print(convFIN.shape)
 
     model = Model(inputs = inputs, outputs = convFIN)
-    
+
     if optim == 'adam':
         model.compile(optimizer = Adam(lr = lr), loss = current_loss, metrics = [current_metric])
     elif optim == 'rmsprop':
