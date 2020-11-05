@@ -7,8 +7,6 @@ import math
 from sklearn.model_selection import train_test_split
 #from data_generator_multi import DataGenerator
 from data_generator_multi_for_avg import DataGenerator
-from unet_seg_v2_weird import unet
-#from unet_seg_v3 import unet
 from keras.callbacks import ModelCheckpoint
 import tensorflow as tf
 
@@ -76,18 +74,28 @@ all_oars = ["canal medullaire", "canal medul pv", "oesophage", "cavite orale", "
 dropout_value = '0.0'
 n_convolutions_per_block = '2'
 
-if len(sys.argv) >= 6:
+if len(sys.argv) >= 7:
     path_to_main_folder = sys.argv[1]
-    kind_of_oars = sys.argv[2] # down, up
-    optim = sys.argv[3]
-    lr = sys.argv[4]
-    n_epochs = sys.argv[5]
-    if len(sys.argv) == 7:
-        initial_weights = sys.argv[6]
+    model_depth = sys.argv[2]
+    kind_of_oars = sys.argv[3] # down, up
+    optim = sys.argv[4]
+    lr = sys.argv[5]
+    n_epochs = sys.argv[6]
+    if len(sys.argv) == 8:
+        initial_weights = sys.argv[7]
+
+    # Manage model depth
+    if model_depth == '64':
+        from unet_seg_64 import unet
+    elif model_depth == '512':
+        from unet_seg_512 import unet
+    else:
+        raise NameError('Unhandled model depth: ' + model_depth)
 
 else:
     print("Wrong number of arguments, see example below.")
-    print("python train_multi.py res_folder kind_of_oars optim lr epochs initial_weights")
+    print("python train_model.py model_depth kind_of_oars optim lr epochs initial_weights")
+    print("    -> format for model_depth: 64 or 512")
     print("    -> format for kind_of_oars: up or down or all or one OAR_NAME")
     print("    -> format for initial_weights: path to model")
     sys.exit()
@@ -101,7 +109,12 @@ elif kind_of_oars == 'all':
 elif kind_of_oars == 'parotides':
     list_oars = ['parotide d', 'parotide g']
 elif kind_of_oars == 'yeux':
-        list_oars = ['oeil d', 'oeil g']
+    list_oars = ['oeil d', 'oeil g']
+elif kind_of_oars == 'sous-maxs':
+    list_oars = ['sous-max d', 'sous-max g']
+elif kind_of_oars == 'oreilles':
+    list_oars = ['oreille int d', 'oreille int g']
+# HANDLES SINGLE ORGAN SEG
 else:
     if kind_of_oars in all_oars:
         list_oars = [kind_of_oars]
@@ -112,7 +125,7 @@ else:
 # Manage folder for generated files
 Path(path_to_main_folder).mkdir(parents=True, exist_ok=True)
 Path(os.path.join(path_to_main_folder, kind_of_oars.replace(' ', '_'))).mkdir(parents=True, exist_ok=True)
-if len(sys.argv) == 7:
+if len(sys.argv) == 8:
     path_to_generated_files = os.path.join(path_to_main_folder, kind_of_oars.replace(' ', '_'), 'dr_' + dropout_value + '_nconv_' + n_convolutions_per_block + '_o_' + optim + '_lr_' + lr + '_e_' + n_epochs + '_transfer')
 else:
     path_to_generated_files = os.path.join(path_to_main_folder, kind_of_oars.replace(' ', '_'), 'dr_' + dropout_value + '_nconv_' + n_convolutions_per_block + '_o_' + optim + '_lr_' + lr + '_e_' + n_epochs)
@@ -184,7 +197,7 @@ model = unet((params['patch_dim'][0], params['patch_dim'][1], params['patch_dim'
 #model = hd_unet((params['patch_dim'][0], params['patch_dim'][1], params['patch_dim'][2], params['n_input_channels']), params['n_output_channels']) # OOM
 
 # Load pretrained weights
-if len(sys.argv) == 7:
+if len(sys.argv) == 8:
     model.load_weights(initial_weights)
 
 # Callbacks
