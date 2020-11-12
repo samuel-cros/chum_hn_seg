@@ -12,6 +12,7 @@ import h5py
 import os
 import csv
 import time
+import sys
 
 #######################################################################################################################
 ### SUBFUNCTIONS
@@ -121,7 +122,7 @@ def number_to_name(channel_number):
 ## Init
 # Paths
 pwd = os.getcwd()
-path_to_data = os.path.join(pwd, "..", "data", "CHUM", "h5_OLD_WRONG_v2")
+path_to_data = os.path.join(pwd, "..", "data", "CHUM", "h5_v2")
 
 # Constants
 nb_oars = 17
@@ -207,6 +208,106 @@ def get_oars_limits():
 
         writer.writerow(first_row)
         writer.writerow(second_row)
+
+
+#######################################################################################################################
+# generate csv file containing number and percentage of nonzero pixels per organ
+def get_oars_proportion():
+
+    # Init
+    IDs = np.load(os.path.join('stats', 'oars_proportion', '20_plus_IDs.npy'))
+    tumor_volumes = ["ptv 1", "ctv 1", "gtv 1"]
+
+    # Init csv
+    with open(os.path.join("stats", "oars_proportion", "oars_proportion.csv"), 'w', newline='') as csv_file:
+
+        fieldnames_number = [number_to_name(x) + ' (number)' for x in range(nb_oars)]
+        fieldnames_percentage = [number_to_name(x) + ' (percentage)' for x in range(nb_oars)]
+
+        fieldnames = ['ID'] + [number_to_name(x) + ' ' + format for x in range(nb_oars) for format in ['(number)', '(percentage)']]
+        writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
+        writer.writeheader()
+
+        # For each patient
+        for ID in IDs:
+
+            # Init
+            row = {}
+            number_of_nonzero = np.zeros(nb_oars)
+            percentage_of_nonzero = np.zeros(nb_oars)
+
+            # For each organ
+            data = h5py.File(os.path.join(path_to_data, ID + '.h5'), "r")
+
+            #print(data["masks"].shape[1], data["masks"].shape[2], data["masks"].shape[3])
+
+            # Go through the channels
+            h5_index = 0
+            for channel_name in data["masks"].attrs["names"]:
+                if channel_name not in tumor_volumes:
+                    # a. Find number of nonzero values
+                    number_of_nonzero[name_to_number(channel_name)] = len(np.where(data["masks"][h5_index, :, :, :])[0])
+                    # b. Divide by total number of values
+                    percentage_of_nonzero[name_to_number(channel_name)] = number_of_nonzero[name_to_number(channel_name)]/(data["masks"].shape[1]*data["masks"].shape[2]*data["masks"].shape[3])
+                h5_index += 1
+
+            #print(number_of_nonzero)
+            #print(percentage_of_nonzero)
+
+            # Fill the csv
+            row['ID'] = ID
+
+            count_fieldname = 0
+            for fieldname in fieldnames_number:
+                row[fieldname] = number_of_nonzero[count_fieldname]
+                count_fieldname += 1
+
+            count_fieldname = 0
+            for fieldname in fieldnames_percentage:
+                row[fieldname] = percentage_of_nonzero[count_fieldname]
+                count_fieldname += 1
+
+            writer.writerow(row)
+
+        # Closing
+        csv_file.close()
+
+#######################################################################################################################
+# generate npy file containing list of IDs of patient having 20+ OARs
+def get_ids_20_plus():
+
+    IDs = []
+    # Go through the data
+    for file in os.listdir(path_to_data):
+
+        # Load data
+        data = h5py.File(os.path.join(path_to_data, file), "r")
+
+        # 
+        if (data["masks"].shape[0] >= 20):
+            IDs.append(file.split('.')[0])
+        
+    np.save(os.path.join('stats', 'oars_proportion', '20_plus_IDs'), IDs)
+
+#######################################################################################################################
+# get average input size
+def get_average_input_height():
+
+    # Init
+    IDs = np.load(os.path.join('stats', 'oars_proportion', '20_plus_IDs.npy'))
+
+    average_height = 0
+    # For each patient
+    for ID in IDs:
+
+        # Load
+        data = h5py.File(os.path.join(path_to_data, ID + '.h5'), "r")
+
+        # Accumulate heights
+        average_height += data["masks"].shape[3]
+
+    print("Average height is: ", average_height/len(IDs))
+
 
 
 
