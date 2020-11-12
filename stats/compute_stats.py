@@ -290,6 +290,27 @@ def get_ids_20_plus():
     np.save(os.path.join('stats', 'oars_proportion', '20_plus_IDs'), IDs)
 
 #######################################################################################################################
+# generate npy file containing list of IDs of patient having the following OARs: 
+def get_ids_16_oars():
+
+    list_oars = ["canal medullaire", "canal medul pv", "oesophage", "cavite orale", "mandibule", "parotide g", "parotide d", "tronc", "trachee", "oreille int g", "oreille int d", "oeil g", "oeil d", "sous-max g", "tronc pv", "sous-max d"]
+
+    IDs = []
+    # Go through the data
+    for file in os.listdir(path_to_data):
+
+        # Load data
+        data = h5py.File(os.path.join(path_to_data, file), "r")
+
+        # Check that file contains all needed oars
+        if (all(e in data["masks"].attrs["names"] for e in list_oars)):
+            IDs.append(file.split('.')[0])
+
+        print(len(IDs))
+        
+    np.save(os.path.join('stats', 'oars_proportion', '16_oars_IDs'), IDs)
+
+#######################################################################################################################
 # get average input size
 def get_average_input_height():
 

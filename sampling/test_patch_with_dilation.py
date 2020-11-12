@@ -25,9 +25,9 @@ patch_dim = (256, 256, 64)
 n_output_channels = 1
 n_input_channels = 1
 
-list_oars = ["parotide g", "parotide d"]
+list_oars = ["mandibule"]
 ID = '00779'
-dilation_radius = 15
+dilation_radius = 20
 
 # Open input file
 h5_file = h5py.File(os.path.join(chum_directory, ID + '.h5'), "r")
