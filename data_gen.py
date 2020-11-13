@@ -3,6 +3,7 @@
 # Math
 import numpy as np
 import random # for random augmentation parameters
+from sampling.binary_morphology import binary_dilation
 
 # DeepL
 import keras
@@ -15,8 +16,10 @@ import os
 import sys
 
 # Paths
-working_directory_path = os.getcwd()
-chum_directory = os.path.join(working_directory_path, "..", "data", "CHUM", "h5_v2")
+chum_directory = os.path.join("..", "data", "CHUM", "h5_v2")
+
+# Parameters to test
+dilation_radius = 20
 
 ############################### Subfunctions ###############################
 
@@ -28,266 +31,64 @@ def interpolate(input, transformation):
 #############################################################
 ### Generate random input and output patches
 #############################################################
-def generate_random_patch(self, input_path):
+def generate_random_patch(self, ID):
 
-    # Open input file
-    h5_file = h5py.File(input_path, "r")
+    input_shape = self.dataset[ID + '/ct'].shape
+
+    #############################################################
+    ### PATCH SAMPLING
+    #############################################################
+    # Compute dilation map
+    dilated_mask = np.zeros((input_shape[0], input_shape[1], input_shape[2]))
+
+    for oar in self.list_oars:
+        dilated_mask += self.dataset[ID + '/dilated_mask/' + oar]
+    
+    # Pick a nonzero value
+    nonzero_values = np.where(dilated_mask)
+    random_index = np.random.randint(0, len(nonzero_values[0]))
+    L_center = nonzero_values[0][random_index]
+    W_center = nonzero_values[1][random_index]
+    H_center = nonzero_values[2][random_index]
+
+    # Compute patch position
+    L = L_center - self.patch_dim[0]
+    W = W_center - self.patch_dim[1]
+    H = H_center - self.patch_dim[2]
+
+    ## Compute offset
+    # Idea = we need to use padding when the patch lands outside the input
+    L_offset, W_offset, H_offset = abs(min(0, L)), abs(min(0, W)), abs(min(0, H))
+
+    L_lower, W_lower, H_lower = max(0, L), max(0, W), max(0, H)
+    L_upper, W_upper, H_upper = min(input_shape[0]-1, L+self.patch_dim[0]), min(input_shape[1]-1, W+self.patch_dim[1]), min(input_shape[2]-1, H+self.patch_dim[2])
+
+    L_dist, W_dist, H_dist = L_upper - L_lower, W_upper - W_lower, H_upper - H_lower
 
     #############################################################
     ### OUTPUT
     #############################################################
-    shape_scans = h5_file["scans"].shape
 
-    # PATCH MANAGEMENT
-    # Cropped (limits where computed to know where the oars can be found)
-    if self.cropping == 'all':
-        L = random.randint(364 - self.patch_dim[0], 153) # 364 - 153 = 211, centered? low-random?
-        W = random.randint(1, 395 - self.patch_dim[1])
-        H = random.randint(0, shape_scans[2] - self.patch_dim[2])
-
-    elif self.cropping == 'down': # canal med, cavité, etc
-        L = random.randint(364 - self.patch_dim[0], 174) # 364 - 174 = 190, centered? low-random?
-        W = random.randint(1, 395 - self.patch_dim[1])
-        H = random.randint(0, shape_scans[2] - self.patch_dim[2])
-
-    elif self.cropping == 'up': # oeil, parotide, etc
-        L = random.randint(363 - self.patch_dim[0], 153) # 363 - 153 = 210, centered? low-random?
-        W = random.randint(66, 376 - self.patch_dim[1])
-        temp = shape_scans[2] - self.patch_dim[2]
-        if temp >= 51:
-            H = random.randint(51, min(shape_scans[2], 334) - self.patch_dim[2])
-        else:
-            H = temp
-
-    elif self.cropping == 'parotides':
-        min_3D_d, max_3D_d = self.min_locations_dict['parotide d'], self.max_locations_dict['parotide d']
-        min_3D_g, max_3D_g = self.min_locations_dict['parotide g'], self.max_locations_dict['parotide g']
-
-        min_3D = []
-        for x,y in zip(min_3D_d, min_3D_g):
-            min_3D.append(min(x,y))
-        
-        max_3D = []
-        for x,y in zip(max_3D_d, max_3D_g):
-            max_3D.append(max(x,y))
-
-        # L (shape_scans[0] is constant at 512 for now)
-        if (max_3D[0] - min_3D[0] >= self.patch_dim[0]):
-            L = random.randint(min_3D[0], max_3D[0] - self.patch_dim[0])
-        else:
-            if max_3D[0] >= self.patch_dim[0]:
-                L = random.randint(max_3D[0] - self.patch_dim[0], min(min_3D[0], self.patch_dim[0]))
-            else:
-                L = random.randint(0, min(min_3D[0], self.patch_dim[0]))
-        
-        # W (shape_scans[1] is constant at 512 for now)
-        if (max_3D[1] - min_3D[1] >= self.patch_dim[1]):
-            W = random.randint(min_3D[1], max_3D[1] - self.patch_dim[1])
-        else:
-            if max_3D[1] >= self.patch_dim[1]:
-                W = random.randint(max_3D[1] - self.patch_dim[1], min(min_3D[1], self.patch_dim[1]))
-            else:
-                W = random.randint(0, min(min_3D[1], self.patch_dim[1]))
-
-        # H (shape_scans[2] is NOT constant at around 200-400 with some particular cases at around 100)
-        #print(shape_scans[2], min_3D[2], max_3D[2])
-
-        if shape_scans[2] >= max_3D[2]:
-            if (max_3D[2] - min_3D[2] >= self.patch_dim[2]):
-                H = random.randint(min_3D[2], max_3D[2] - self.patch_dim[2])
-            else:
-                H = random.randint(max_3D[2] - self.patch_dim[2], min_3D[2])
-        else:
-            H = random.randint(0, shape_scans[2] - self.patch_dim[2])
-
-    elif self.cropping == 'yeux':
-        min_3D_d, max_3D_d = self.min_locations_dict['oeil d'], self.max_locations_dict['oeil d']
-        min_3D_g, max_3D_g = self.min_locations_dict['oeil g'], self.max_locations_dict['oeil g']
-
-        min_3D = []
-        for x,y in zip(min_3D_d, min_3D_g):
-            min_3D.append(min(x,y))
-        
-        max_3D = []
-        for x,y in zip(max_3D_d, max_3D_g):
-            max_3D.append(max(x,y))
-
-        # L (shape_scans[0] is constant at 512 for now)
-        if (max_3D[0] - min_3D[0] >= self.patch_dim[0]):
-            L = random.randint(min_3D[0], max_3D[0] - self.patch_dim[0])
-        else:
-            if max_3D[0] >= self.patch_dim[0]:
-                L = random.randint(max_3D[0] - self.patch_dim[0], min(min_3D[0], self.patch_dim[0]))
-            else:
-                L = random.randint(0, min(min_3D[0], self.patch_dim[0]))
-        
-        # W (shape_scans[1] is constant at 512 for now)
-        if (max_3D[1] - min_3D[1] >= self.patch_dim[1]):
-            W = random.randint(min_3D[1], max_3D[1] - self.patch_dim[1])
-        else:
-            if max_3D[1] >= self.patch_dim[1]:
-                W = random.randint(max_3D[1] - self.patch_dim[1], min(min_3D[1], self.patch_dim[1]))
-            else:
-                W = random.randint(0, min(min_3D[1], self.patch_dim[1]))
-
-        # H (shape_scans[2] is NOT constant at around 200-400 with some particular cases at around 100)
-        #print(shape_scans[2], min_3D[2], max_3D[2])
-
-        if shape_scans[2] >= max_3D[2]:
-            if (max_3D[2] - min_3D[2] >= self.patch_dim[2]):
-                H = random.randint(min_3D[2], max_3D[2] - self.patch_dim[2])
-            else:
-                H = random.randint(max_3D[2] - self.patch_dim[2], min_3D[2])
-        else:
-            H = random.randint(0, shape_scans[2] - self.patch_dim[2])
-
-    elif self.cropping == 'sous-maxs':
-        min_3D_d, max_3D_d = self.min_locations_dict['sous-max d'], self.max_locations_dict['sous-max d']
-        min_3D_g, max_3D_g = self.min_locations_dict['sous-max g'], self.max_locations_dict['sous-max g']
-
-        min_3D = []
-        for x,y in zip(min_3D_d, min_3D_g):
-            min_3D.append(min(x,y))
-        
-        max_3D = []
-        for x,y in zip(max_3D_d, max_3D_g):
-            max_3D.append(max(x,y))
-
-        # L (shape_scans[0] is constant at 512 for now)
-        if (max_3D[0] - min_3D[0] >= self.patch_dim[0]):
-            L = random.randint(min_3D[0], max_3D[0] - self.patch_dim[0])
-        else:
-            if max_3D[0] >= self.patch_dim[0]:
-                L = random.randint(max_3D[0] - self.patch_dim[0], min(min_3D[0], self.patch_dim[0]))
-            else:
-                L = random.randint(0, min(min_3D[0], self.patch_dim[0]))
-        
-        # W (shape_scans[1] is constant at 512 for now)
-        if (max_3D[1] - min_3D[1] >= self.patch_dim[1]):
-            W = random.randint(min_3D[1], max_3D[1] - self.patch_dim[1])
-        else:
-            if max_3D[1] >= self.patch_dim[1]:
-                W = random.randint(max_3D[1] - self.patch_dim[1], min(min_3D[1], self.patch_dim[1]))
-            else:
-                W = random.randint(0, min(min_3D[1], self.patch_dim[1]))
-
-        # H (shape_scans[2] is NOT constant at around 200-400 with some particular cases at around 100)
-        #print(shape_scans[2], min_3D[2], max_3D[2])
-
-        if shape_scans[2] >= max_3D[2]:
-            if (max_3D[2] - min_3D[2] >= self.patch_dim[2]):
-                H = random.randint(min_3D[2], max_3D[2] - self.patch_dim[2])
-            else:
-                H = random.randint(max_3D[2] - self.patch_dim[2], min_3D[2])
-        else:
-            H = random.randint(0, shape_scans[2] - self.patch_dim[2])
-
-    elif self.cropping == 'oreilles':
-        min_3D_d, max_3D_d = self.min_locations_dict['oreille int d'], self.max_locations_dict['oreille int d']
-        min_3D_g, max_3D_g = self.min_locations_dict['oreille int g'], self.max_locations_dict['oreille int g']
-
-        min_3D = []
-        for x,y in zip(min_3D_d, min_3D_g):
-            min_3D.append(min(x,y))
-        
-        max_3D = []
-        for x,y in zip(max_3D_d, max_3D_g):
-            max_3D.append(max(x,y))
-
-        # L (shape_scans[0] is constant at 512 for now)
-        if (max_3D[0] - min_3D[0] >= self.patch_dim[0]):
-            L = random.randint(min_3D[0], max_3D[0] - self.patch_dim[0])
-        else:
-            if max_3D[0] >= self.patch_dim[0]:
-                L = random.randint(max_3D[0] - self.patch_dim[0], min(min_3D[0], self.patch_dim[0]))
-            else:
-                L = random.randint(0, min(min_3D[0], self.patch_dim[0]))
-        
-        # W (shape_scans[1] is constant at 512 for now)
-        if (max_3D[1] - min_3D[1] >= self.patch_dim[1]):
-            W = random.randint(min_3D[1], max_3D[1] - self.patch_dim[1])
-        else:
-            if max_3D[1] >= self.patch_dim[1]:
-                W = random.randint(max_3D[1] - self.patch_dim[1], min(min_3D[1], self.patch_dim[1]))
-            else:
-                W = random.randint(0, min(min_3D[1], self.patch_dim[1]))
-
-        # H (shape_scans[2] is NOT constant at around 200-400 with some particular cases at around 100)
-        #print(shape_scans[2], min_3D[2], max_3D[2])
-
-        if shape_scans[2] >= max_3D[2]:
-            if (max_3D[2] - min_3D[2] >= self.patch_dim[2]):
-                H = random.randint(min_3D[2], max_3D[2] - self.patch_dim[2])
-            else:
-                H = random.randint(max_3D[2] - self.patch_dim[2], min_3D[2])
-        else:
-            H = random.randint(0, shape_scans[2] - self.patch_dim[2])
-
-    
-    else:
-        # Random
-        '''
-        L = random.randint(0, shape_scans[0] - self.patch_dim[0])
-        W = random.randint(0, shape_scans[1] - self.patch_dim[1])
-        H = random.randint(0, shape_scans[2] - self.patch_dim[2])
-        '''
-
-        # OAR specific
-        min_3D, max_3D = self.min_locations_dict[self.cropping], self.max_locations_dict[self.cropping]
-
-        # L (shape_scans[0] is constant at 512 for now)
-        if (max_3D[0] - min_3D[0] >= self.patch_dim[0]):
-            L = random.randint(min_3D[0], max_3D[0] - self.patch_dim[0])
-        else:
-            if max_3D[0] >= self.patch_dim[0]:
-                L = random.randint(max_3D[0] - self.patch_dim[0], min(min_3D[0], self.patch_dim[0]))
-            else:
-                L = random.randint(0, min(min_3D[0], self.patch_dim[0]))
-        
-        # W (shape_scans[1] is constant at 512 for now)
-        if (max_3D[1] - min_3D[1] >= self.patch_dim[1]):
-            W = random.randint(min_3D[1], max_3D[1] - self.patch_dim[1])
-        else:
-            if max_3D[1] >= self.patch_dim[1]:
-                W = random.randint(max_3D[1] - self.patch_dim[1], min(min_3D[1], self.patch_dim[1]))
-            else:
-                W = random.randint(0, min(min_3D[1], self.patch_dim[1]))
-
-        # H (shape_scans[2] is NOT constant at around 200-400 with some particular cases at around 100)
-        #print(shape_scans[2], min_3D[2], max_3D[2])
-
-        if shape_scans[2] >= max_3D[2]:
-            if (max_3D[2] - min_3D[2] >= self.patch_dim[2]):
-                H = random.randint(min_3D[2], max_3D[2] - self.patch_dim[2])
-            else:
-                H = random.randint(max_3D[2] - self.patch_dim[2], min_3D[2])
-        else:
-            H = random.randint(0, shape_scans[2] - self.patch_dim[2])       
-
-    # Create an empty array of n_output_channels:
+    # Init
     new_output = np.zeros((self.patch_dim[0], self.patch_dim[1], self.patch_dim[2], self.n_output_channels)) #
 
-    # PATCH MANAGEMENT
-    tumor_volumes = ["ptv 1", "ctv 1", "gtv 1"]
-
-    h5_index = 0
-    for channel_name in h5_file["masks"].attrs["names"]:
-        if channel_name not in tumor_volumes and channel_name in self.list_oars:
-            new_output[:, :, :, 0] += h5_file["masks"][h5_index, L:L+self.patch_dim[0], W:W+self.patch_dim[1], H:H+self.patch_dim[2]]
-        h5_index += 1
+    for oar in self.list_oars:
+        new_output[L_offset:L_offset+L_dist, W_offset:W_offset+W_dist, H_offset:H_offset+H_dist, 0] += self.dataset[ID + '/mask/' + oar][L_lower:L_upper, W_lower:W_upper, H_lower:H_upper]
 
     #############################################################
     ### INPUT
     #############################################################
-    # Create an empty array of n_input_channels:
-    new_input = np.zeros((self.patch_dim[0], self.patch_dim[1], self.patch_dim[2], self.n_input_channels))
+    # Init
+    min_value = -1000.0 # -1000.0, search DONE for all 1000+ cases
+    max_value = 3071.0 # 3071.0, search DONE for all 1000+ cases
+    new_input = np.full((self.patch_dim[0], self.patch_dim[1], self.patch_dim[2], self.n_input_channels), min_value)
 
     # Fill the CT channel
-    new_input[:, :, :, 0] = h5_file["scans"][L:L+self.patch_dim[0], W:W+self.patch_dim[1], H:H+self.patch_dim[2]]
+    new_input[L_offset:L_offset+L_dist, W_offset:W_offset+W_dist, H_offset:H_offset+H_dist, 0] = self.dataset[ID + '/ct'][L_lower:L_upper, W_lower:W_upper, H_lower:H_upper]
 
     # Scaling factor
-    new_input[:, :, :, 0] -= -1000.0 # -1e3, search DONE for all 1000+ cases
-    new_input[:, :, :, 0] /= 3071.0 # 3071.0, search DONE for all 1000+ cases
+    new_input[:, :, :, 0] -= min_value 
+    new_input[:, :, :, 0] /= (max_value - min_value)
 
     if self.augmentation: # TOREDO
 
@@ -326,7 +127,7 @@ def generate_random_patch(self, input_path):
 
         new_output = new_augmented_output
         '''
-
+    
     return new_input, new_output
 
 ##################################################################
@@ -336,28 +137,18 @@ def generate_random_patch(self, input_path):
 # DataGenerator
 class DataGenerator(keras.utils.Sequence):
     'Generates data for Keras'
-    def __init__(self, train_or_validation, list_IDs, list_oars, patch_dim, batch_size, n_input_channels, n_output_channels, cropping, min_locations_dict, max_locations_dict, shuffle=True, augmentation=False):
+    def __init__(self, train_or_validation, list_IDs, list_oars, patch_dim, batch_size, n_input_channels, n_output_channels, dataset, shuffle=True, augmentation=False):
         'Initialization'
         self.input_directory = chum_directory
         self.patch_dim = patch_dim
         self.batch_size = batch_size
         self.list_IDs = list_IDs
         self.list_oars = list_oars
-        
-        dict_oars = {}
-        count = 0
-        for oar in list_oars:
-            dict_oars[oar] = count
-            count += 1
-
-        self.dict_oars = dict_oars
         self.n_input_channels = n_input_channels
         self.n_output_channels = n_output_channels
         self.shuffle = shuffle
         self.augmentation = augmentation
-        self.cropping = cropping
-        self.min_locations_dict = min_locations_dict
-        self.max_locations_dict = max_locations_dict
+        self.dataset = dataset
         self.on_epoch_end()
 
     def __len__(self):
@@ -393,8 +184,7 @@ class DataGenerator(keras.utils.Sequence):
         for i, ID in enumerate(list_IDs_temp):
         
             # Store sample
-            input_path = os.path.join(self.input_directory, ID + ".h5")
-            input_patch, output_patch = generate_random_patch(self, input_path)
+            input_patch, output_patch = generate_random_patch(self, ID)
             X[i,] = input_patch
             y[i,] = output_patch
 

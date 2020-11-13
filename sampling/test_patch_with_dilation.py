@@ -25,29 +25,23 @@ patch_dim = (256, 256, 64)
 n_output_channels = 1
 n_input_channels = 1
 
-list_oars = ["mandibule"]
-ID = '00779'
+list_oars = ["tronc"]
+ID = '00726'
 dilation_radius = 20
 
 # Open input file
-h5_file = h5py.File(os.path.join(chum_directory, ID + '.h5'), "r")
-shape_scans = h5_file["scans"].shape
+dataset = h5py.File(os.path.join('..', '..', 'data', 'CHUM', 'h5_v3', 'regenerated_dataset.h5'), "r")
+input_shape = dataset[ID + '/ct'].shape
 
 #############################################################
 ### PATCH SAMPLING
 #############################################################
-tumor_volumes = ["ptv 1", "ctv 1", "gtv 1"]
 
 # Compute dilation map
-combined_mask = np.zeros((shape_scans[0], shape_scans[1], shape_scans[2]))
+dilated_mask = np.zeros((input_shape[0], input_shape[1], input_shape[2]))
 
-h5_index = 0
-for channel_name in h5_file["masks"].attrs["names"]:
-    if channel_name not in tumor_volumes and channel_name in list_oars:
-        combined_mask += h5_file["masks"][h5_index] # += in case of 'left' and 'right' organ, such as eyes
-    h5_index += 1
-
-dilated_mask = binary_dilation(combined_mask, (1,1,1), dilation_radius)
+for oar in list_oars:
+    dilated_mask += dataset[ID + '/dilated_mask/' + oar]
 
 # Pick a nonzero value
 nonzero_values = np.where(dilated_mask)
@@ -68,7 +62,7 @@ H = H_center - patch_dim[2]//2
 L_offset, W_offset, H_offset = abs(min(0, L)), abs(min(0, W)), abs(min(0, H))
 
 L_lower, W_lower, H_lower = max(0, L), max(0, W), max(0, H)
-L_upper, W_upper, H_upper = min(shape_scans[0]-1, L+patch_dim[0]), min(shape_scans[1]-1, W+patch_dim[1]), min(shape_scans[2]-1, H+patch_dim[2])
+L_upper, W_upper, H_upper = min(input_shape[0]-1, L+patch_dim[0]), min(input_shape[1]-1, W+patch_dim[1]), min(input_shape[2]-1, H+patch_dim[2])
 
 L_dist, W_dist, H_dist = L_upper - L_lower, W_upper - W_lower, H_upper - H_lower
 
@@ -79,11 +73,8 @@ L_dist, W_dist, H_dist = L_upper - L_lower, W_upper - W_lower, H_upper - H_lower
 # Init
 new_output = np.zeros((patch_dim[0], patch_dim[1], patch_dim[2], n_output_channels)) #
 
-h5_index = 0
-for channel_name in h5_file["masks"].attrs["names"]:
-    if channel_name not in tumor_volumes and channel_name in list_oars:
-        new_output[L_offset:L_offset+L_dist, W_offset:W_offset+W_dist, H_offset:H_offset+H_dist, 0] += h5_file["masks"][h5_index, L_lower:L_upper, W_lower:W_upper, H_lower:H_upper]
-    h5_index += 1
+for oar in list_oars:
+        new_output[L_offset:L_offset+L_dist, W_offset:W_offset+W_dist, H_offset:H_offset+H_dist, 0] += dataset[ID + '/mask/' + oar][L_lower:L_upper, W_lower:W_upper, H_lower:H_upper]
 
 #############################################################
 ### INPUT
@@ -94,7 +85,7 @@ max_value = 3071.0 # 3071.0, search DONE for all 1000+ cases
 new_input = np.full((patch_dim[0], patch_dim[1], patch_dim[2], n_input_channels), min_value)
 
 # Fill the CT channel
-new_input[L_offset:L_offset+L_dist, W_offset:W_offset+W_dist, H_offset:H_offset+H_dist, 0] = h5_file["scans"][L_lower:L_upper, W_lower:W_upper, H_lower:H_upper]
+new_input[L_offset:L_offset+L_dist, W_offset:W_offset+W_dist, H_offset:H_offset+H_dist, 0] = dataset[ID + '/ct'][L_lower:L_upper, W_lower:W_upper, H_lower:H_upper]
 
 # Scaling factor
 new_input[:, :, :, 0] -= min_value 
@@ -104,7 +95,7 @@ new_input[:, :, :, 0] /= (max_value - min_value)
 ### DISPLAY
 #############################################################
 
-'''
+#'''
 # Show dilated mask
 image = None
 for h in range(0, dilated_mask.shape[2], 1):
@@ -117,7 +108,7 @@ for h in range(0, dilated_mask.shape[2], 1):
         plt.title('Slice ' + str(h))
     plt.pause(0.0001)
     plt.draw()
-'''
+#'''
 
 # Show new input
 image = None

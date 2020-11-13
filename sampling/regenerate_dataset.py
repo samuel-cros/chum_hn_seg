@@ -35,8 +35,7 @@ extra_volumes = ["ptv 1", "ctv 1", "gtv 1", "nerf optique g"]
 #       - name_organ_2: 512*512*H
 #       - ...
 
-pwd = os.getcwd()
-h5_file = h5py.File(os.path.join(pwd, '..', '..', 'data', 'CHUM', 'h5_v3', 'regenerated_dataset.h5'), 'w')
+h5_file = h5py.File(os.path.join('..', '..', 'data', 'CHUM', 'h5_v3', 'regenerated_dataset.h5'), 'w')
 
 # For each patient
 for ID in IDs:
@@ -61,6 +60,4 @@ for ID in IDs:
             h5_file.create_dataset(ID + '/dilated_mask/' + channel_name, data = dilated_data, compression="gzip")
 
         h5_index += 1
-
-    sys.exit()
         

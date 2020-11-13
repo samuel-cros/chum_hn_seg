@@ -6,7 +6,7 @@ import math
 # DeepL
 from sklearn.model_selection import train_test_split
 #from data_generator_multi import DataGenerator
-from data_generator_multi_for_avg import DataGenerator
+from data_gen import DataGenerator
 from keras.callbacks import ModelCheckpoint
 import tensorflow as tf
 
@@ -18,6 +18,7 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 import sys
 import os
+import h5py
 
 ###############################################
 ## Limit memory allocation to minimum needed # TOTEST
@@ -30,42 +31,15 @@ session = tf.Session(config=config)
 ## Sub-functions
 ###############################################
 
-## get_min_max_3D
-# Returns
-#   - min_3D: [min_along_x, min_along_y, min_along_z] i.e minimum position in the volumes where the organ appears
-#   - max_3D: [max_along_x, max_along_y, max_along_z] i.e maximum position in the volumes where the organ appears
-# Parameters
-#   - reader: a dict reader of the csv containing the oar_locations (generated via /stats/compute_stats.py)
-#   - oar_name: the name of the oar handled
-def parse_min_max(min_max):
-
-    #print(min_max)
-
-    parsed = []
-    min_max_splitted = ((min_max.split('('))[1].split(')'))[0].split(',')
-    for i in range(len(min_max_splitted)):
-        parsed.append(int(float(min_max_splitted[i])))
-
-    #print(parsed)
-
-    return parsed
+#
 
 ###############################################
-## Splitting
+## Input
 ###############################################
 seed_value = 38
 
-# Load csv data
-data_info_reader = csv.DictReader(open('data_infos.csv'))
-
-# Select only rows with min_nb_masks masks
-dataset_size = 200
-dataset_size_check = 0
-min_nb_masks = 20 # 20 ~31%, 15 ~71%, 10 ~86%, 5 ~94% of 1045 patients
-
 # "canal medullaire", "canal medul pv", "oesophage", "cavite orale", "mandibule", "parotide g", "parotide d", "tronc", "trachee", "oreille int g", "oreille int d", "oeil g", "oeil d", "sous-max g", "tronc pv", "sous-max d", "nerf optique g"
 #list_oars = ["canal medullaire", "canal medul pv", "oesophage", "cavite orale", "mandibule", "parotide g", "parotide d", "tronc", "trachee", "oreille int g", "oreille int d", "oeil g", "oeil d", "sous-max g", "tronc pv", "sous-max d", "nerf optique g"]
-
 
 # Manage OARs
 all_oars = ["canal medullaire", "canal medul pv", "oesophage", "cavite orale", "mandibule", "parotide g", "parotide d", "tronc", "trachee", "oreille int g", "oreille int d", "oeil g", "oeil d", "sous-max g", "tronc pv", "sous-max d", "nerf optique g"]
@@ -94,7 +68,7 @@ if len(sys.argv) >= 7:
 
 else:
     print("Wrong number of arguments, see example below.")
-    print("python train_model.py model_depth kind_of_oars optim lr epochs initial_weights")
+    print("python train_model.py output_folder model_depth kind_of_oars optim lr epochs initial_weights")
     print("    -> format for model_depth: 64 or 512")
     print("    -> format for kind_of_oars: up or down or all or one OAR_NAME")
     print("    -> format for initial_weights: path to model")
@@ -121,7 +95,6 @@ else:
     else:
         raise NameError('Unknown kind of oars: ' + kind_of_oars)
 
-
 # Manage folder for generated files
 Path(path_to_main_folder).mkdir(parents=True, exist_ok=True)
 Path(os.path.join(path_to_main_folder, kind_of_oars.replace(' ', '_'))).mkdir(parents=True, exist_ok=True)
@@ -131,44 +104,12 @@ else:
     path_to_generated_files = os.path.join(path_to_main_folder, kind_of_oars.replace(' ', '_'), 'dr_' + dropout_value + '_nconv_' + n_convolutions_per_block + '_o_' + optim + '_lr_' + lr + '_e_' + n_epochs)
 Path(path_to_generated_files).mkdir(parents=True, exist_ok=True)
 
-IDs = []
-
-# OARs locations
-working_directory_path = os.getcwd()
-oars_locations_reader = csv.DictReader(open(os.path.join(working_directory_path, 'stats', 'oars_location', 'oars_limits_20_more.csv')))
-
-rows = []
-for row in oars_locations_reader:
-    rows.append(row)
-
-#print('rows', rows)
-
-min_locations_dict = {}
-for oar in list_oars:
-    min_locations_dict[oar] = parse_min_max(rows[0][oar])
-
-#print('min_locations_dict', min_locations_dict)
-
-max_locations_dict = {}
-for oar in list_oars:
-    max_locations_dict[oar] = parse_min_max(rows[1][oar])
-
-# Select data based on nb_masks
-''' 
-for row in data_info_reader:
-    if (int(row['nb_masks']) >= min_nb_masks and dataset_size_check < 200):
-        IDs.append(row['ID'])
-        dataset_size_check += 1
-'''
-
-# Select data based on masks
-#''' 
-for row in data_info_reader:
-    if (int(row['nb_masks']) >= min_nb_masks and dataset_size_check < dataset_size): # TO REDO
-        if all(oar in row['masks_names'] for oar in list_oars):
-            IDs.append(row['ID'])
-            dataset_size_check += 1
-#'''
+###############################################
+## Splitting
+###############################################
+# Load IDs
+IDs = np.load(os.path.join('stats', 'oars_proportion', '16_oars_IDs.npy')) # 430 patients
+IDs = IDs[:200] # TEST
 
 # Split in train 70%, validation 15%, test 15%
 train_IDs, other_IDs = train_test_split(IDs, test_size=0.3, random_state=seed_value)
@@ -182,19 +123,21 @@ np.save(os.path.join(path_to_generated_files, "test_IDs"), test_IDs)
 ###############################################
 ## Parameters
 ###############################################
+h5_dataset = h5py.File(os.path.join('..', 'data', 'CHUM', 'h5_v3', 'regenerated_dataset.h5'), "r")
+
 params = {'patch_dim': (256, 256, 64),
           'batch_size': 1,
           'n_input_channels': 1,
           'n_output_channels': 1,
-          'shuffle': True} # 'n_output_channels': len(list_oars),
+          'dataset': h5_dataset,
+          'shuffle': True}
 
 # Generators
-training_generator = DataGenerator("train", train_IDs, list_oars, **params, cropping=kind_of_oars, min_locations_dict=min_locations_dict, max_locations_dict=max_locations_dict, augmentation=False)
-validation_generator = DataGenerator("validation", validation_IDs, list_oars, **params, cropping=kind_of_oars, min_locations_dict=min_locations_dict, max_locations_dict=max_locations_dict)
+training_generator = DataGenerator("train", train_IDs, list_oars, **params)
+validation_generator = DataGenerator("validation", validation_IDs, list_oars, **params)
 
 # Define model
 model = unet((params['patch_dim'][0], params['patch_dim'][1], params['patch_dim'][2], params['n_input_channels']), params['n_output_channels'], float(dropout_value), int(n_convolutions_per_block), optim, float(lr))
-#model = hd_unet((params['patch_dim'][0], params['patch_dim'][1], params['patch_dim'][2], params['n_input_channels']), params['n_output_channels']) # OOM
 
 # Load pretrained weights
 if len(sys.argv) == 8:
@@ -230,9 +173,9 @@ np.save(os.path.join(path_to_generated_files, 'validation_loss'), validation_los
 #validation_accuracy = history.history['val_accuracy']
 
 training_accuracy = history.history['dice_coefficient']
-np.save(os.path.join(path_to_generated_files, 'training_accuracy'), training_accuracy)
+np.save(os.path.join(path_to_generated_files, 'training_dice'), training_accuracy)
 validation_accuracy = history.history['val_dice_coefficient']
-np.save(os.path.join(path_to_generated_files, 'validation_accuracy'), validation_accuracy)
+np.save(os.path.join(path_to_generated_files, 'validation_dice'), validation_accuracy)
 
 # Create count of the number of epochs
 epoch_count = range(1, len(training_loss) + 1)
@@ -249,7 +192,7 @@ plt.savefig(os.path.join(path_to_generated_files, "loss.png"))
 plt.figure()
 plt.plot(epoch_count, training_accuracy, 'r--')
 plt.plot(epoch_count, validation_accuracy, 'b-')
-plt.legend(['Training Accuracy', 'Validation Accuracy'])
+plt.legend(['Training Dice', 'Validation Dice'])
 plt.xlabel('Epoch')
-plt.ylabel('Accuracy')
-plt.savefig(os.path.join(path_to_generated_files, "accuracy.png"))
+plt.ylabel('Dice')
+plt.savefig(os.path.join(path_to_generated_files, "dice.png"))
