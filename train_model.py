@@ -1,3 +1,9 @@
+## Seeding
+from numpy.random import seed
+seed(1)
+from tensorflow import set_random_seed
+set_random_seed(2)
+
 ## Imports
 # Math
 import numpy as np
@@ -9,6 +15,8 @@ from sklearn.model_selection import train_test_split
 from data_gen import DataGenerator
 from keras.callbacks import ModelCheckpoint
 import tensorflow as tf
+from keras.layers import *
+from model import unet_3D
 
 # IO
 import csv
@@ -57,14 +65,6 @@ if len(sys.argv) >= 7:
     n_epochs = sys.argv[6]
     if len(sys.argv) == 8:
         initial_weights = sys.argv[7]
-
-    # Manage model depth
-    if model_depth == '64':
-        from unet_seg_64 import unet
-    elif model_depth == '512':
-        from unet_seg_512 import unet
-    else:
-        raise ValueError('Unhandled model depth: ' + model_depth)
 
 else:
     print("Wrong number of arguments, see example below.")
@@ -138,7 +138,9 @@ training_generator = DataGenerator("train", train_IDs, list_oars, **params)
 validation_generator = DataGenerator("validation", validation_IDs, list_oars, **params)
 
 # Define model
-model = unet((params['patch_dim'][0], params['patch_dim'][1], params['patch_dim'][2], n_input_channels), n_output_channels, float(dropout_value), int(n_convolutions_per_block), optim, float(lr))
+model = unet_3D((params['patch_dim'][0], params['patch_dim'][1], params['patch_dim'][2], params['n_input_channels']), int(model_depth), float(dropout_value), optim, float(lr))
+
+#model = unet((params['patch_dim'][0], params['patch_dim'][1], params['patch_dim'][2], params['n_input_channels']), params['n_output_channels'], float(dropout_value), int(n_convolutions_per_block), optim, float(lr))
 
 # Load pretrained weights
 if len(sys.argv) == 8:
