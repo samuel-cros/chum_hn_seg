@@ -9,6 +9,7 @@ import keras
 import tensorflow as tf
 
 # IO
+import argparse
 import sys
 import h5py
 import os
@@ -40,108 +41,103 @@ def parse_IDs(list_of_IDs):
 # Data to test
 # - validation, test or manual
 
-# Additional params
-dropout_value = 0.0
-n_convolutions_per_block = 2
+parser = argparse.ArgumentParser(description='Test a given model')
 
-if len(sys.argv) >=6:
-    path_to_model_dir = sys.argv[1]
-    model_name = sys.argv[2]
-    model_depth = sys.argv[3]
-    kind_of_oars = sys.argv[4]
-    train_validation_or_test_or_manual = sys.argv[5]
-    if train_validation_or_test_or_manual == 'manual':
-        list_IDs_if_manual = sys.argv[6]
+# Arguments
+parser.add_argument('-path', '--path_to_model_dir', type=str, required=True,
+                    help='Path to the model directory')
+parser.add_argument('-n', '--model_name', type=str, required=True,
+                    help='Name of the model')
+parser.add_argument('-d', '--model_depth', type=str, required=True,
+                    help='Depth of the model')
+parser.add_argument('-oars', '--kind_of_oars', type=str, required=True,
+                    help='Kind of oars predicted')
+parser.add_argument('-set', '--kind_of_set', type=str, required=True,
+                    help='Kind of set for the prediction : train, validation' \
+                        ', test or manual')
+parser.add_argument('-ids', '--ids_if_manual', type=str,
+                    help='IDs for manual set with format: XXXXX-XXXXX-...')
+parser.add_argument('-nconv', '--n_conv_per_block', type=int,
+                    help='Number of convolutions per block', default=2)
+parser.add_argument('-masks', '--summed_masks', dest='summed_mask', 
+                    action='store_true', help='Generate summed masks')
+parser.add_argument('-no-masks', '--no-summed_masks', dest='summed_mask', 
+                    action='store_false', help="Don't generate summed masks")
+parser.add_argument('-scores', '--dice_scores', dest='dice_scores', 
+                    action='store_true', help="Generate dice scores")
+parser.add_argument('-no-scores', '--no-dice_scores', dest='dice_scores', 
+                    action='store_false', help="Don't generate dice scores")
 
-    # Manage model depth
-    if model_depth == '64':
-        from unet_seg_64 import unet
-    elif model_depth == '512':
-        from unet_seg_512 import unet
-    else:
-        raise NameError('Unhandled model depth: ' + model_depth)
 
-    # Manage OARs
-    all_oars = ["canal medullaire", "canal medul pv", "oesophage", 
-                "cavite orale", "mandibule", "parotide g", "parotide d", 
-                "tronc", "tronc pv", "trachee", "oreille int g", 
+# Additional defaults
+parser.set_defaults(summed_masks=True, dice_scores=True)
+
+args = parser.parse_args()
+
+# Manage model depth
+if args.model_depth == '64':
+    from unet_seg_64 import unet
+elif args.model_depth == '512':
+    from unet_seg_512 import unet
+else:
+    raise NameError('Unhandled model depth: ' + args.model_depth)
+
+# Manage OARs
+all_oars = ["canal medullaire", "canal medul pv", "oesophage", 
+            "cavite orale", "mandibule", "parotide g", "parotide d", 
+            "tronc", "tronc pv", "trachee", "oreille int g", 
+            "oreille int d", "oeil g", "oeil d", "sous-max g", 
+            "sous-max d", "nerf optique g"]
+
+if args.kind_of_oars == 'down':
+    list_oars = ["canal medullaire", "canal medul pv", "cavite orale", 
+                "oesophage", "mandibule", "tronc", "trachee", "tronc pv"]
+    oar_colors = ['red', 'orange', 'yellow', 'gold', 'lime', 'aquamarine', 
+                'cyan', 'magenta']
+elif args.kind_of_oars == 'up':
+    list_oars = ["parotide g", "parotide d", "oreille int g", 
                 "oreille int d", "oeil g", "oeil d", "sous-max g", 
                 "sous-max d", "nerf optique g"]
-
-    if kind_of_oars == 'down':
-        list_oars = ["canal medullaire", "canal medul pv", "cavite orale", 
-                    "oesophage", "mandibule", "tronc", "trachee", "tronc pv"]
-        oar_colors = ['red', 'orange', 'yellow', 'gold', 'lime', 'aquamarine', 
-                    'cyan', 'magenta']
-    elif kind_of_oars == 'up':
-        list_oars = ["parotide g", "parotide d", "oreille int g", 
-                    "oreille int d", "oeil g", "oeil d", "sous-max g", 
-                    "sous-max d", "nerf optique g"]
-        oar_colors = ['green', 'green', 'deepskyblue', 'deepskyblue', 'blue', 
-                    'blue', 'purple', 'purple', 'deeppink']
-    elif kind_of_oars == 'all':
-        list_oars = all_oars
-        oar_colors = ['red', 'orange', 'yellow', 'gold', 'lime', 'green', 
-                    'green', 'aquamarine', 'cyan', 'deepskyblue', 
-                    'deepskyblue', 'blue', 'blue', 'purple', 'purple', 
-                    'magenta', 'deeppink']
-    elif kind_of_oars == 'parotides':
-        list_oars = ['parotide d', 'parotide g']
-        left_right = True
-    elif kind_of_oars == 'yeux':
-        list_oars = ['oeil d', 'oeil g']
-        left_right = True
-    elif kind_of_oars == 'sous-maxs':
-        list_oars = ['sous-max d', 'sous-max g']
-        left_right = True
-    elif kind_of_oars == 'oreilles':
-        list_oars = ['oreille int d', 'oreille int g']
-        left_right = True
-    # HANDLES SINGLE ORGAN SEG
-    else:
-        if kind_of_oars in all_oars:
-            list_oars = [kind_of_oars]
-            oar_colors = ['red']
-        else:
-            raise NameError('Unknown kind of oars: ' + kind_of_oars)
-
-    dict_oars = {}
-    count = 0
-    for oar in all_oars:
-        dict_oars[oar] = count
-        count += 1
-   
-
+    oar_colors = ['green', 'green', 'deepskyblue', 'deepskyblue', 'blue', 
+                'blue', 'purple', 'purple', 'deeppink']
+elif args.kind_of_oars == 'all':
+    list_oars = all_oars
+    oar_colors = ['red', 'orange', 'yellow', 'gold', 'lime', 'green', 
+                'green', 'aquamarine', 'cyan', 'deepskyblue', 
+                'deepskyblue', 'blue', 'blue', 'purple', 'purple', 
+                'magenta', 'deeppink']
+elif args.kind_of_oars == 'parotides':
+    list_oars = ['parotide d', 'parotide g']
+    left_right = True
+elif args.kind_of_oars == 'yeux':
+    list_oars = ['oeil d', 'oeil g']
+    left_right = True
+elif args.kind_of_oars == 'sous-maxs':
+    list_oars = ['sous-max d', 'sous-max g']
+    left_right = True
+elif args.kind_of_oars == 'oreilles':
+    list_oars = ['oreille int d', 'oreille int g']
+    left_right = True
+# HANDLES SINGLE ORGAN SEG
 else:
-    print("Wrong number of arguments, see example below.")
-    print("python test_multi_params_for_avg.py path_to_model_dir model_name " \
-        "model_depth kind_of_oars train_validation_or_test_or_manual " \
-            "list_IDs_if_manual")
-    print("    -> format for model_depth: 64 or 512")    
-    print("    -> format for kind_of_oars: up or down or all or OAR_NAME")
-    print("    -> format for list_IDs_if_manual: XXXXX-XXXXX-XXXXX-...")
-    sys.exit()
+    if args.kind_of_oars in all_oars:
+        list_oars = [args.kind_of_oars]
+        oar_colors = ['red']
+    else:
+        raise NameError('Unknown kind of oars: ' + args.kind_of_oars)
 
-# Get more args
-'''
-val = input("Generate summed masks? y/n \n") 
-generate_summed_masks = True if (val == 'y') else False
-'''
-generate_summed_masks = True
-
-'''
-val = input("Generate dice scores? y/n \n")
-generate_dice_scores = True if (val == 'y') else False
-'''
-generate_dice_scores = True
+dict_oars = {}
+count = 0
+for oar in all_oars:
+    dict_oars[oar] = count
+    count += 1
 
 ###############################################################################
 ### MAIN
 ###############################################################################
 ## Init
 # Paths
-pwd = os.getcwd()
-path_to_data = os.path.join(pwd, "..", "data", "CHUM", "h5_v2")
+path_to_data = os.path.join("..", "data", "CHUM", "h5_v2")
 
 # Net infos
 patch_dim = (256, 256, 64)
@@ -184,22 +180,22 @@ extra_volumes = ['ptv 1', 'gtv 1', 'ctv 1']
 # Load model
 optim, lr = 'adam', '5e-4' # doesn't matter at test time
 model = unet((patch_dim[0], patch_dim[1], patch_dim[2], n_input_channels), 
-            n_output_channels, float(dropout_value), 
-            int(n_convolutions_per_block), optim, float(lr))
+            n_output_channels, 0.0, int(args.n_conv_per_block), optim, 
+            float(lr))
 
 model.summary()
 
-model.load_weights(os.path.join(path_to_model_dir, model_name))
+model.load_weights(os.path.join(args.path_to_model_dir, args.model_name))
 
 # Load data IDs
-list_IDs = parse_IDs(list_IDs_if_manual) \
-            if (train_validation_or_test_or_manual == "manual") \
-            else (np.load(os.path.join(path_to_model_dir, 
-                train_validation_or_test_or_manual + "_IDs.npy")))
+list_IDs = parse_IDs(args.ids_if_manual) \
+            if (args.kind_of_set == "manual") \
+            else (np.load(os.path.join(args.path_to_model_dir, 
+                args.kind_of_set + "_IDs.npy")))
 
 # Saving results
-path_to_results = os.path.join(path_to_model_dir, 'results_' + 
-                                train_validation_or_test_or_manual)
+path_to_results = os.path.join(args.path_to_model_dir, 'results_' + 
+                                args.kind_of_set)
 path_to_expected_volume = os.path.join(path_to_results, 'expected')
 path_to_predicted_volume = os.path.join(path_to_results, 'predicted')
 
@@ -214,11 +210,11 @@ Path(path_to_predicted_volume).mkdir(parents=True, exist_ok=True)
 dice_coeff_all = np.zeros(n_output_channels+1)
 count = 0
 
-if generate_dice_scores:
+if args.dice_scores:
     csv_file = open(os.path.join(path_to_results, 
-                    train_validation_or_test_or_manual + '_dice_scores.csv'), 
+                    args.kind_of_set + '_dice_scores.csv'), 
                     'w', newline='')
-    fieldnames = ['ID'] + [oar_name for oar_name in [kind_of_oars]] \
+    fieldnames = ['ID'] + [oar_name for oar_name in [args.kind_of_oars]] \
                 + ['average']
     writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
     writer.writeheader()
@@ -284,7 +280,7 @@ for ID in list_IDs:
 
     #'''
     # Summed masks
-    if generate_summed_masks:
+    if args.summed_masks:
 
         path_to_expected_volume_for_ID = os.path.join(path_to_expected_volume, 
                                                         ID)
@@ -377,7 +373,7 @@ for ID in list_IDs:
         prediction[0, :, :, :, :]
 
     # Summed masks
-    if generate_summed_masks:
+    if args.summed_masks:
 
         path_to_predicted_volume_for_ID = \
             os.path.join(path_to_predicted_volume, ID)
@@ -427,7 +423,7 @@ for ID in list_IDs:
     ##########################
 
     # Dice scores
-    if generate_dice_scores:
+    if args.dice_scores:
         
         # GOOD WAY KERAS
         from keras import backend as K
@@ -444,7 +440,7 @@ for ID in list_IDs:
         
         print('--------------------------------------------------------------')
         for n in range(n_output_channels):
-            print('Dice coefficient for ' + kind_of_oars + ': ' + \
+            print('Dice coefficient for ' + args.kind_of_oars + ': ' + \
                     str(dice_coeff[n]))
         print('Average dice coefficient for patient ' + ID + ': ' + \
                     str(np.mean(dice_coeff)))
@@ -455,7 +451,7 @@ for ID in list_IDs:
         # Fill a row dict
         row = {}
         row['ID'] = ID 
-        for oar_name in [kind_of_oars]:
+        for oar_name in [args.kind_of_oars]:
             row[oar_name] = dice_coeff[0]
         row['average'] = np.mean(dice_coeff)
 
@@ -467,14 +463,14 @@ for ID in list_IDs:
 # Stats
 # - Dice for each channel
 # - Average Dice
-if generate_dice_scores:
+if args.dice_scores:
 
     dice_coeff_all /= len(list_IDs)
 
     # Fill a row dict
     row = {}
     row['ID'] = 'ALL'
-    for oar_name in [kind_of_oars]:
+    for oar_name in [args.kind_of_oars]:
         row[oar_name] = dice_coeff_all[0]
     row['average'] = dice_coeff_all[-1]
 

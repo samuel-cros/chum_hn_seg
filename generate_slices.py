@@ -10,6 +10,7 @@ from keras import backend as K
 import tensorflow as tf
 
 # IO
+import argparse
 import sys
 import h5py
 import os
@@ -44,98 +45,93 @@ def parse_IDs(list_of_IDs):
 # Data to test
 # - validation, test or manual
 
-# Additional params
-dropout_value = 0.0
-n_convolutions_per_block = 2
+parser = argparse.ArgumentParser(description='Test a given model')
 
-if len(sys.argv) >=7:
-    path_to_model_dir = sys.argv[1]
-    model_name = sys.argv[2]
-    model_depth = sys.argv[3]
-    mode_for_H = sys.argv[4]
-    kind_of_oars = sys.argv[5]
-    train_validation_or_test_or_manual = sys.argv[6]
-    if train_validation_or_test_or_manual == 'manual':
-        list_IDs_if_manual = sys.argv[7]
+# Arguments
+parser.add_argument('-path', '--path_to_model_dir', type=str, required=True,
+                    help='Path to the model directory')
+parser.add_argument('-n', '--model_name', type=str, required=True,
+                    help='Name of the model')
+parser.add_argument('-d', '--model_depth', type=str, required=True,
+                    help='Depth of the model')
+parser.add_argument('-oars', '--kind_of_oars', type=str, required=True,
+                    help='Kind of oars predicted')
+parser.add_argument('-set', '--kind_of_set', type=str, required=True,
+                    help='Kind of set for the prediction : train, validation' \
+                        ', test or manual')
+parser.add_argument('-ids', '--ids_if_manual', type=str,
+                    help='IDs for manual set with format: XXXXX-XXXXX-...')
+parser.add_argument('-nconv', '--n_conv_per_block', type=int,
+                    help='Number of convolutions per block', default=2)
+parser.add_argument('-H', '--mode_for_H', type=str, required=True,
+                    help='Mode used for the height: centered or up')
 
-    # Manage model depth
-    if model_depth == '64':
-        from unet_seg_64 import unet
-    elif model_depth == '512':
-        from unet_seg_512 import unet
-    else:
-        raise NameError('Unhandled model depth: ' + model_depth)
+args = parser.parse_args()
 
-    # Manage OARs
-    all_oars = ["canal medullaire", "canal medul pv", "oesophage", 
-                "cavite orale", "mandibule", "parotide g", "parotide d", 
-                "tronc", "tronc pv", "trachee", "oreille int g", 
+# Manage model depth
+if args.model_depth == '64':
+    from unet_seg_64 import unet
+elif args.model_depth == '512':
+    from unet_seg_512 import unet
+else:
+    raise NameError('Unhandled model depth: ' + args.model_depth)
+
+# Manage OARs
+all_oars = ["canal medullaire", "canal medul pv", "oesophage", 
+            "cavite orale", "mandibule", "parotide g", "parotide d", 
+            "tronc", "tronc pv", "trachee", "oreille int g", 
+            "oreille int d", "oeil g", "oeil d", "sous-max g", 
+            "sous-max d", "nerf optique g"]
+
+if args.kind_of_oars == 'down':
+    list_oars = ["canal medullaire", "canal medul pv", "cavite orale", 
+                "oesophage", "mandibule", "tronc", "trachee", "tronc pv"]
+    oar_colors = ['red', 'orange', 'yellow', 'gold', 'lime', 'aquamarine', 
+                'cyan', 'magenta']
+elif args.kind_of_oars == 'up':
+    list_oars = ["parotide g", "parotide d", "oreille int g", 
                 "oreille int d", "oeil g", "oeil d", "sous-max g", 
                 "sous-max d", "nerf optique g"]
-    
-    if kind_of_oars == 'down':
-        list_oars = ["canal medullaire", "canal medul pv", "cavite orale", 
-                    "oesophage", "mandibule", "tronc", "trachee", "tronc pv"]
-        oar_colors = ['red', 'orange', 'yellow', 'gold', 'lime', 'aquamarine', 
-                        'cyan', 'magenta']
-    elif kind_of_oars == 'up':
-        list_oars = ["parotide g", "parotide d", "oreille int g", 
-                    "oreille int d", "oeil g", "oeil d", "sous-max g", 
-                    "sous-max d", "nerf optique g"]
-        oar_colors = ['green', 'green', 'deepskyblue', 'deepskyblue', 'blue', 
-                        'blue', 'purple', 'purple', 'deeppink']
-    elif kind_of_oars == 'all':
-        list_oars = all_oars
-        oar_colors = ['red', 'orange', 'yellow', 'gold', 'lime', 'green', 
-                        'green', 'aquamarine', 'cyan', 'deepskyblue', 
-                        'deepskyblue', 'blue', 'blue', 'purple', 'purple', 
-                        'magenta', 'deeppink']
-    elif kind_of_oars == 'parotides':
-        list_oars = ['parotide d', 'parotide g']
-        left_right = True
-    elif kind_of_oars == 'yeux':
-        list_oars = ['oeil d', 'oeil g']
-        left_right = True
-    elif kind_of_oars == 'sous-maxs':
-        list_oars = ['sous-max d', 'sous-max g']
-        left_right = True
-    elif kind_of_oars == 'oreilles':
-        list_oars = ['oreille int d', 'oreille int g']
-        left_right = True
-    # HANDLES SINGLE ORGAN SEG
-    else:
-        if kind_of_oars in all_oars:
-            list_oars = [kind_of_oars]
-            oar_colors = ['red']
-        else:
-            raise NameError('Unknown kind of oars: ' + kind_of_oars)
-
-    dict_oars = {}
-    count = 0
-    for oar in all_oars:
-        dict_oars[oar] = count
-        count += 1
-
-   
-
+    oar_colors = ['green', 'green', 'deepskyblue', 'deepskyblue', 'blue', 
+                'blue', 'purple', 'purple', 'deeppink']
+elif args.kind_of_oars == 'all':
+    list_oars = all_oars
+    oar_colors = ['red', 'orange', 'yellow', 'gold', 'lime', 'green', 
+                'green', 'aquamarine', 'cyan', 'deepskyblue', 
+                'deepskyblue', 'blue', 'blue', 'purple', 'purple', 
+                'magenta', 'deeppink']
+elif args.kind_of_oars == 'parotides':
+    list_oars = ['parotide d', 'parotide g']
+    left_right = True
+elif args.kind_of_oars == 'yeux':
+    list_oars = ['oeil d', 'oeil g']
+    left_right = True
+elif args.kind_of_oars == 'sous-maxs':
+    list_oars = ['sous-max d', 'sous-max g']
+    left_right = True
+elif args.kind_of_oars == 'oreilles':
+    list_oars = ['oreille int d', 'oreille int g']
+    left_right = True
+# HANDLES SINGLE ORGAN SEG
 else:
-    print("Wrong number of arguments, see example below.")
-    print("python generate_slices.py path_to_model_dir model_name " \
-            "model_depth mode_for_H kind_of_oars " \
-            "train_validation_or_test_or_manual list_IDs_if_manual")
-    print("    -> format for model_depth: 64 or 512")
-    print("    -> format for mode_for_H: centered or up")
-    print("    -> format for kind_of_oars: up or down or all or OAR_NAME")
-    print("    -> format for list_IDs_if_manual: XXXXX-XXXXX-XXXXX-...")
-    sys.exit()
+    if args.kind_of_oars in all_oars:
+        list_oars = [args.kind_of_oars]
+        oar_colors = ['red']
+    else:
+        raise NameError('Unknown kind of oars: ' + args.kind_of_oars)
+
+dict_oars = {}
+count = 0
+for oar in all_oars:
+    dict_oars[oar] = count
+    count += 1
 
 ###############################################################################
 ### MAIN
 ###############################################################################
 ## Init
 # Paths
-pwd = os.getcwd()
-path_to_data = os.path.join(pwd, "..", "data", "CHUM", "h5_v2")
+path_to_data = os.path.join("..", "data", "CHUM", "h5_v2")
 
 # Net infos
 patch_dim = (256, 256, 64)
@@ -180,22 +176,22 @@ extra_volumes = ['ptv 1', 'gtv 1', 'ctv 1']
 # Load model
 optim, lr = 'adam', '5e-4' # doesn't matter at test time
 model = unet((patch_dim[0], patch_dim[1], patch_dim[2], n_input_channels), 
-        n_output_channels, float(dropout_value), int(n_convolutions_per_block),
+        n_output_channels, 0.0, int(args.n_conv_per_block),
         optim, float(lr))
 
 model.summary()
 
-model.load_weights(os.path.join(path_to_model_dir, model_name))
+model.load_weights(os.path.join(args.path_to_model_dir, args.model_name))
 
 # Load data IDs
-list_IDs = parse_IDs(list_IDs_if_manual) \
-            if (train_validation_or_test_or_manual == "manual") \
-            else (np.load(os.path.join(path_to_model_dir, 
-                    train_validation_or_test_or_manual + "_IDs.npy")))
+list_IDs = parse_IDs(args.ids_if_manual) \
+            if (args.kind_of_set == "manual") \
+            else (np.load(os.path.join(args.path_to_model_dir, 
+                    args.kind_of_set + "_IDs.npy")))
 
 # Saving results
-path_to_results = os.path.join(path_to_model_dir, 'results_slices_' + \
-                                train_validation_or_test_or_manual)
+path_to_results = os.path.join(args.path_to_model_dir, 'results_slices_' + \
+                                args.kind_of_set)
 path_to_expected_volume = os.path.join(path_to_results, 'expected')
 path_to_predicted_volume = os.path.join(path_to_results, 'predicted')
 
@@ -223,14 +219,14 @@ for ID in list_IDs:
     ct = data['scans']
     masks = data['masks']  
 
-    if mode_for_H == 'centered':
+    if args.mode_for_H == 'centered':
         H = ct.shape[2]//2 - patch_dim[2]//2 
         # centered for lower organs within the volume
-    elif mode_for_H == 'up':
+    elif args.mode_for_H == 'up':
         H = ct.shape[2] - patch_dim[2] 
         # up for upper organs within the volume
     else:
-        raise NameError('Unhandled mode for H: ' + mode_for_H)
+        raise NameError('Unhandled mode for H: ' + args.mode_for_H)
 
     ##########################
     # EXPTECTED VOLUME
