@@ -48,7 +48,7 @@ parser.add_argument('-path', '--path_to_model_dir', type=str, required=True,
                     help='Path to the model directory')
 parser.add_argument('-n', '--model_name', type=str, required=True,
                     help='Name of the model')
-parser.add_argument('-d', '--model_depth', type=str, required=True,
+parser.add_argument('-depth', '--model_depth', type=str, required=True,
                     help='Depth of the model')
 parser.add_argument('-oars', '--kind_of_oars', type=str, required=True,
                     help='Kind of oars predicted')

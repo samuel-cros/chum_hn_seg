@@ -11,6 +11,7 @@ from keras.callbacks import ModelCheckpoint
 import tensorflow as tf
 
 # IO
+import argparse
 import csv
 import matplotlib
 matplotlib.use("Agg")
@@ -66,83 +67,85 @@ dataset_size = 200
 dataset_size_check = 0
 min_nb_masks = 20 # 20 ~31%, 15 ~71%, 10 ~86%, 5 ~94% of 1045 patients
 
+parser = argparse.ArgumentParser(description='Test a given model')
+
+# Arguments
+parser.add_argument('-path', '--path_to_main_folder', type=str, required=True,
+                    help='Path to the output folder')
+parser.add_argument('-depth', '--model_depth', type=str, required=True,
+                    help='Depth of the model')
+parser.add_argument('-oars', '--kind_of_oars', type=str, required=True,
+                    help='Kind of oars to predict')
+parser.add_argument('-o', '--optim', type=str, required=True,
+                    help='Optimizer')
+parser.add_argument('--lr', type=float, required=True, help='Learning rate')
+parser.add_argument('-drop', '--dropout_value', type=float, required=True,
+                    help='Dropout')
+parser.add_argument('-nconv', '--n_conv_per_block', type=int,
+                    help='Number of convolutions per block', default=2)
+parser.add_argument('-e', '--n_epochs', type=int, required=True,
+                    help='Number of epochs')
+parser.add_argument('-w', '--initial_weights', type=str,
+                    help='Path to the initial weights')
+
+args = parser.parse_args()
+
+# Manage model depth
+if args.model_depth == '64':
+    from unet_seg_64 import unet
+elif args.model_depth == '512':
+    from unet_seg_512 import unet
+else:
+    raise NameError('Unhandled model depth: ' + args.model_depth)
+
 # Manage OARs
 all_oars = ["canal medullaire", "canal medul pv", "oesophage", "cavite orale", 
             "mandibule", "parotide g", "parotide d", "tronc", "trachee", 
             "oreille int g", "oreille int d", "oeil g", "oeil d", "sous-max g",
             "tronc pv", "sous-max d", "nerf optique g"]
 
-# Additional params
-dropout_value = '0.0'
-n_convolutions_per_block = '2'
-
-if len(sys.argv) >= 7:
-    path_to_main_folder = sys.argv[1]
-    model_depth = sys.argv[2]
-    kind_of_oars = sys.argv[3] # down, up
-    optim = sys.argv[4]
-    lr = sys.argv[5]
-    n_epochs = sys.argv[6]
-    if len(sys.argv) == 8:
-        initial_weights = sys.argv[7]
-
-    # Manage model depth
-    if model_depth == '64':
-        from unet_seg_64 import unet
-    elif model_depth == '512':
-        from unet_seg_512 import unet
-    else:
-        raise NameError('Unhandled model depth: ' + model_depth)
-
-else:
-    print("Wrong number of arguments, see example below.")
-    print("python train_model.py path_to_main_folder model_depth " \
-            "kind_of_oars optim lr epochs initial_weights")
-    print("    -> format for model_depth: 64 or 512")
-    print("    -> format for kind_of_oars: up or down or all or one OAR_NAME")
-    print("    -> format for initial_weights: path to model")
-    sys.exit()
-
-if kind_of_oars == 'down':
+if args.kind_of_oars == 'down':
     list_oars = ["canal medullaire", "canal medul pv", "cavite orale", 
                 "oesophage", "mandibule", "tronc", "trachee", "tronc pv"]
-elif kind_of_oars == 'up':
+elif args.kind_of_oars == 'up':
     list_oars = ["parotide g", "parotide d", "oreille int g", "oreille int d",
                 "oeil g", "oeil d", "sous-max g", "sous-max d", 
                 "nerf optique g"]
-elif kind_of_oars == 'all':
+elif args.kind_of_oars == 'all':
     list_oars = all_oars
-elif kind_of_oars == 'parotides':
+elif args.kind_of_oars == 'parotides':
     list_oars = ['parotide d', 'parotide g']
-elif kind_of_oars == 'yeux':
+elif args.kind_of_oars == 'yeux':
     list_oars = ['oeil d', 'oeil g']
-elif kind_of_oars == 'sous-maxs':
+elif args.kind_of_oars == 'sous-maxs':
     list_oars = ['sous-max d', 'sous-max g']
-elif kind_of_oars == 'oreilles':
+elif args.kind_of_oars == 'oreilles':
     list_oars = ['oreille int d', 'oreille int g']
 # HANDLES SINGLE ORGAN SEG
 else:
-    if kind_of_oars in all_oars:
-        list_oars = [kind_of_oars]
+    if args.kind_of_oars in all_oars:
+        list_oars = [args.kind_of_oars]
     else:
-        raise NameError('Unknown kind of oars: ' + kind_of_oars)
+        raise NameError('Unknown kind of oars: ' + args.kind_of_oars)
 
 
 # Manage folder for generated files
-Path(path_to_main_folder).mkdir(parents=True, exist_ok=True)
-Path(os.path.join(path_to_main_folder, 
-                    kind_of_oars.replace(' ', '_'))).mkdir(parents=True, 
+Path(args.path_to_main_folder).mkdir(parents=True, exist_ok=True)
+Path(os.path.join(args.path_to_main_folder, 
+                    args.kind_of_oars.replace(' ', '_'))).mkdir(parents=True, 
                                                             exist_ok=True)
-if len(sys.argv) == 8:
-    path_to_generated_files = os.path.join(path_to_main_folder, 
-        kind_of_oars.replace(' ', '_'), 
-        'dr_' + dropout_value + '_nconv_' + n_convolutions_per_block + '_o_' \
-             + optim + '_lr_' + lr + '_e_' + n_epochs + '_transfer')
+if args.initial_weights is not None:
+    path_to_generated_files = os.path.join(args.path_to_main_folder, 
+        args.kind_of_oars.replace(' ', '_'), 
+        'dr_' + str(args.dropout_value) + '_nconv_' + \
+            str(args.n_conv_per_block) + '_o_' + args.optim + '_lr_' + \
+                str(args.lr) + '_e_' + str(args.n_epochs) + '_transfer')
 else:
-    path_to_generated_files = os.path.join(path_to_main_folder, 
-        kind_of_oars.replace(' ', '_'), 'dr_' + dropout_value + '_nconv_' + \
-            n_convolutions_per_block + '_o_' + optim + '_lr_' + lr + '_e_' + \
-                n_epochs)
+    path_to_generated_files = os.path.join(args.path_to_main_folder, 
+        args.kind_of_oars.replace(' ', '_'), 'dr_' + \
+            str(args.dropout_value) + '_nconv_' + \
+                str(args.n_conv_per_block) + '_o_' + args.optim + '_lr_' + \
+                    str(args.lr) + '_e_' + str(args.n_epochs))
 Path(path_to_generated_files).mkdir(parents=True, exist_ok=True)
 
 IDs = []
@@ -209,24 +212,24 @@ params = {'patch_dim': (256, 256, 64),
 
 # Generators
 training_generator = DataGenerator("train", train_IDs, list_oars, **params, 
-                                    cropping=kind_of_oars, 
+                                    cropping=args.kind_of_oars, 
                                     min_locations_dict=min_locations_dict, 
                                     max_locations_dict=max_locations_dict, 
                                     augmentation=False)
 validation_generator = DataGenerator("validation", validation_IDs, list_oars, 
-                                        **params, cropping=kind_of_oars, 
+                                        **params, cropping=args.kind_of_oars, 
                                         min_locations_dict=min_locations_dict, 
                                         max_locations_dict=max_locations_dict)
 
 # Define model
 model = unet((params['patch_dim'][0], params['patch_dim'][1], 
                 params['patch_dim'][2], params['n_input_channels']), 
-                params['n_output_channels'], float(dropout_value), 
-                int(n_convolutions_per_block), optim, float(lr))
+                params['n_output_channels'], args.dropout_value, 
+                args.n_conv_per_block, args.optim, args.lr)
 
 # Load pretrained weights
-if len(sys.argv) == 8:
-    model.load_weights(initial_weights)
+if args.initial_weights is not None:
+    model.load_weights(args.initial_weights)
 
 # Callbacks
 mc = ModelCheckpoint(os.path.join(path_to_generated_files, 'best_model.h5'), 
@@ -240,7 +243,7 @@ callbacks = [mc]
 ###############################################
 history = model.fit_generator(generator=training_generator, 
                             validation_data=validation_generator,
-                            epochs=int(n_epochs),
+                            epochs=int(args.n_epochs),
                             callbacks=callbacks,
                             max_queue_size=16,
                             workers=8) # TODO, adapt to .fit
