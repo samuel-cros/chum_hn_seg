@@ -13,10 +13,11 @@ import os
 import csv
 import time
 
-#######################################################################################################################
+###############################################################################
 ### SUBFUNCTIONS
-#######################################################################################################################
-# The channels order is as follows : (may change, for now it's based on most occurences, decreasing order)
+###############################################################################
+# The channels order is as follows : (may change, for now it's based on most 
+# occurences, decreasing order)
     # 0 : canal medullaire
     # 1 : canal medul pv
     # 2 : oesophage
@@ -34,7 +35,7 @@ import time
     # 14 : tronc pv
     # 15 : sous-max d
     # 16 : nerf optique g
-#######################################################################################################################
+###############################################################################
 # Returns the corresponding channel number given a channel name
 def name_to_number(channel_name):
     if (channel_name == "canal medullaire"):
@@ -115,22 +116,23 @@ def number_to_name(channel_number):
 
 # 
 
-#######################################################################################################################
+###############################################################################
 ### MAIN
-#######################################################################################################################
+###############################################################################
 ## Init
 # Paths
 pwd = os.getcwd()
-path_to_data = os.path.join(pwd, "..", "data", "CHUM", "h5_OLD_WRONG_v2")
+path_to_data = os.path.join(pwd, "..", "data", "CHUM", "h5_v2")
 
 # Constants
 nb_oars = 17
 max_dim = (512, 512, 512)
 
-#######################################################################################################################
+###############################################################################
 ### OARS LOCATION
-#######################################################################################################################
-# get_oars_location generates a npy file containing all summed masks with shape (nb_oars, max_dim1, max_dim2, max_dim3)
+###############################################################################
+# get_oars_location generates a npy file containing all summed masks with shape
+#  (nb_oars, max_dim1, max_dim2, max_dim3)
 def get_oars_location():
 
     t0 = time.time()
@@ -152,7 +154,9 @@ def get_oars_location():
             h5_index = 0
             for channel_name in data["masks"].attrs["names"]:
                 if channel_name not in tumor_volumes:
-                    sum_masks[name_to_number(channel_name), :, :, 0:data["masks"][h5_index].shape[2]] += data["masks"][h5_index, :, :, :]
+                    sum_masks[name_to_number(channel_name), 
+                                :, :, 0:data["masks"][h5_index].shape[2]] += \
+                                    data["masks"][h5_index, :, :, :]
                 h5_index += 1
 
     # Save the summed masks
@@ -160,23 +164,28 @@ def get_oars_location():
         os.mkdir(os.path.join("stats", "oars_location"))
     except OSError as error: 
         print(error)
-    np.save(os.path.join("stats", "oars_location", "summed_masks"), sum_masks)
+    np.save(os.path.join("stats", "oars_location", "summed_masks"), 
+            sum_masks)
 
-#######################################################################################################################
-# get_oars_limits generates a csv file containing the minimum index (first row) and maximum index (second row) of nonzero values in the summed_masks (cf get_oars_location)
+###############################################################################
+# get_oars_limits generates a csv file containing the minimum index (first row)
+#  and maximum index (second row) of nonzero values in the summed_masks
+#  (cf get_oars_location)
 def get_oars_limits():
 
     # Init
 
     # Load summed_masks
     try:
-        summed_masks = np.load(os.path.join("stats", "oars_location", "summed_masks.npy"))
+        summed_masks = np.load(os.path.join("stats", "oars_location",
+                                             "summed_masks.npy"))
     except FileNotFoundError:
         print("File not found, first get the oar locations!")
         sys.exit()
 
     # Generate csv, a column by oar, first line = min, second line = max
-    with open(os.path.join("stats", "oars_location", "oars_limits.csv"), 'w', newline='') as csv_file:
+    with open(os.path.join("stats", "oars_location", "oars_limits.csv"), 'w', 
+                newline='') as csv_file:
         fieldnames = [number_to_name(x) for x in range(nb_oars)]
         writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
         writer.writeheader()
@@ -192,17 +201,24 @@ def get_oars_limits():
         # Find dim1, dim2, dim3 limits
         for channel_index in range(summed_masks.shape[0]):
             list_of_nonzero_values = np.where(summed_masks[channel_index])
-            min_dim1[channel_index], max_dim1[channel_index] = min(list_of_nonzero_values[0]), max(list_of_nonzero_values[0])
-            min_dim2[channel_index], max_dim2[channel_index] = min(list_of_nonzero_values[1]), max(list_of_nonzero_values[1])
-            min_dim3[channel_index], max_dim3[channel_index] = min(list_of_nonzero_values[2]), max(list_of_nonzero_values[2])
+            min_dim1[channel_index], max_dim1[channel_index] = \
+                min(list_of_nonzero_values[0]), max(list_of_nonzero_values[0])
+            min_dim2[channel_index], max_dim2[channel_index] = \
+                min(list_of_nonzero_values[1]), max(list_of_nonzero_values[1])
+            min_dim3[channel_index], max_dim3[channel_index] = \
+                min(list_of_nonzero_values[2]), max(list_of_nonzero_values[2])
 
         # Write the stats: first line = min, second line = max
         first_row = {}
         second_row = {}
         count = 0
         for field in fieldnames:
-            first_row[field] = (min_dim1[count], min_dim2[count], min_dim3[count])
-            second_row[field] = (max_dim1[count], max_dim2[count], max_dim3[count])
+            first_row[field] = (min_dim1[count], 
+                                min_dim2[count], 
+                                min_dim3[count])
+            second_row[field] = (max_dim1[count], 
+                                max_dim2[count], 
+                                max_dim3[count])
             count += 1
 
         writer.writerow(first_row)
