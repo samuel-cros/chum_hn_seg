@@ -177,7 +177,7 @@ model.summary()
 model.load_weights(os.path.join(path_to_model_dir, model_name))
 
 # Load data IDs
-list_IDs = parse_IDs(list_IDs_if_manual) if (train_validation_or_test_or_manual == "manual") else (np.load(os.path.join(path_to_model_dir, validation_or_test_or_manual + "_IDs.npy")))
+list_IDs = parse_IDs(list_IDs_if_manual) if (train_validation_or_test_or_manual == "manual") else (np.load(os.path.join(path_to_model_dir, train_validation_or_test_or_manual + "_IDs.npy")))
 
 # Saving results
 path_to_results = os.path.join(path_to_model_dir, 'results_' + train_validation_or_test_or_manual)
