@@ -218,7 +218,7 @@ for ID in list_IDs:
         H = ct.shape[2] - params['patch_dim'][2] 
         # up for upper organs within the volume
     else:
-        raise ValueError('Unhandled mode for H: ' + mode_for_H)
+        raise ValueError('Unhandled mode for H: ' + args.mode_for_H)
 
     ##########################
     # EXPTECTED VOLUME
