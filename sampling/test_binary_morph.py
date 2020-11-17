@@ -12,9 +12,9 @@ import os
 import h5py
 import matplotlib.pyplot as plt
 
-#######################################################################################################################
+###############################################################################
 ### MAIN
-#######################################################################################################################
+###############################################################################
 # Paths
 pwd = os.getcwd()
 path_to_data = os.path.join(pwd, "..", "..", "data", "CHUM", "h5_v2")
@@ -22,7 +22,8 @@ path_to_data = os.path.join(pwd, "..", "..", "data", "CHUM", "h5_v2")
 # Load example patient
 
 # Init
-IDs = np.load(os.path.join('..', 'stats', 'oars_proportion', '20_plus_IDs.npy'))
+IDs = np.load(os.path.join('..', 'stats', 'oars_proportion', 
+                           '20_plus_IDs.npy'))
 tumor_volumes = ["ptv 1", "ctv 1", "gtv 1"]
 data = h5py.File(os.path.join(path_to_data, IDs[0] + '.h5'), "r")
 

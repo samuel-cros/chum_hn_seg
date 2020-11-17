@@ -32,7 +32,8 @@ def h5tree(path, with_attr=False):
             for v, g in group.items():
                 h5t(v, g, parent=value)
         if type(group) is h5.Dataset:
-            desc = " ".join([str(group.shape).replace(",", ""), group.dtype.name])
+            desc = " ".join([str(group.shape).replace(",", ""), 
+                             group.dtype.name])
             if with_attr:
                 desc += " "+attrs(group)
             tree.create_node(value+": "+desc, value, parent=parent)
