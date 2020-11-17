@@ -11,7 +11,7 @@ from keras import activations
 from keras import regularizers
 from tensorflow.keras import losses
 
-from utils.fcn_maker.model import assemble_unet
+from fcn_maker.model import assemble_unet
 
 ###########################################################################
 ## Losses #################################################################

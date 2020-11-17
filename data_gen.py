@@ -3,7 +3,6 @@
 # Math
 import numpy as np
 import random # for random augmentation parameters
-from sampling.binary_morphology import binary_dilation
 
 # DeepL
 import keras

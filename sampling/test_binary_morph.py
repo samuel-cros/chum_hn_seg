@@ -3,7 +3,7 @@
 #################
 # Math
 import numpy as np
-from binary_morphology import *
+from data_tools.binary_morphology import *
 
 # DeepL
 
