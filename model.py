@@ -33,16 +33,25 @@ def dice_coefficient_loss(y_true, y_pred):
 ###########################################################################
 def unet_3D(input_shape, model_depth, dropout, optim, lr):
 
-    model = assemble_unet(input_shape=input_shape,
-        init_num_filters=(16, 16), num_classes=1, num_pooling=int(math.log(model_depth, 2)-4), 
-        short_skip=False, long_skip=True, long_skip_merge_mode='concat',
-        upsample_mode='conv', dropout=dropout, normalization= BatchNormalization, weight_decay=None,
-        init='he_normal', nonlinearity='relu', halve_features_on_upsample=True, ndim=3, verbose=True)
+    model = assemble_unet(input_shape=input_shape, init_num_filters=(16, 16), 
+                          num_classes=1, 
+                          num_pooling=int(math.log(model_depth, 2)-4), 
+                          short_skip=False, long_skip=True, 
+                          long_skip_merge_mode='concat',
+                          upsample_mode='conv', dropout=dropout, 
+                          normalization= BatchNormalization, weight_decay=None,
+                          init='he_normal', nonlinearity='relu', 
+                          halve_features_on_upsample=True, ndim=3, 
+                          verbose=True)
 
     if optim == 'adam':
-            model.compile(optimizer = Adam(lr = lr), loss = dice_coefficient_loss, metrics = [dice_coefficient])
+            model.compile(optimizer = Adam(lr = lr), 
+                          loss = dice_coefficient_loss, 
+                          metrics = [dice_coefficient])
     elif optim == 'rmsprop':
-        model.compile(optimizer = RMSprop(lr = lr), loss = dice_coefficient_loss, metrics = [dice_coefficient])
+        model.compile(optimizer = RMSprop(lr = lr), 
+                      loss = dice_coefficient_loss, 
+                      metrics = [dice_coefficient])
     else:
         raise NameError('Unknown optimizer.')
 

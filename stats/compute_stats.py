@@ -14,10 +14,11 @@ import csv
 import time
 import sys
 
-#######################################################################################################################
+###############################################################################
 ### SUBFUNCTIONS
-#######################################################################################################################
-# The channels order is as follows : (may change, for now it's based on most occurences, decreasing order)
+###############################################################################
+# The channels order is as follows : (may change, for now it's based on most 
+# occurences, decreasing order)
     # 0 : canal medullaire
     # 1 : canal medul pv
     # 2 : oesophage
@@ -35,7 +36,7 @@ import sys
     # 14 : tronc pv
     # 15 : sous-max d
     # 16 : nerf optique g
-#######################################################################################################################
+###############################################################################
 # Returns the corresponding channel number given a channel name
 def name_to_number(channel_name):
     if (channel_name == "canal medullaire"):
@@ -116,9 +117,9 @@ def number_to_name(channel_number):
 
 # 
 
-#######################################################################################################################
+###############################################################################
 ### MAIN
-#######################################################################################################################
+###############################################################################
 ## Init
 # Paths
 path_to_data = os.path.join("..", "data", "CHUM", "h5_v2")
@@ -127,10 +128,11 @@ path_to_data = os.path.join("..", "data", "CHUM", "h5_v2")
 nb_oars = 17
 max_dim = (512, 512, 512)
 
-#######################################################################################################################
+###############################################################################
 ### OARS LOCATION
-#######################################################################################################################
-# get_oars_location generates a npy file containing all summed masks with shape (nb_oars, max_dim1, max_dim2, max_dim3)
+###############################################################################
+# get_oars_location generates a npy file containing all summed masks with shape
+#  (nb_oars, max_dim1, max_dim2, max_dim3)
 def get_oars_location():
 
     t0 = time.time()
@@ -152,7 +154,9 @@ def get_oars_location():
             h5_index = 0
             for channel_name in data["masks"].attrs["names"]:
                 if channel_name not in tumor_volumes:
-                    sum_masks[name_to_number(channel_name), :, :, 0:data["masks"][h5_index].shape[2]] += data["masks"][h5_index, :, :, :]
+                    sum_masks[name_to_number(channel_name), :, :, 
+                              0:data["masks"][h5_index].shape[2]] += \
+                                  data["masks"][h5_index, :, :, :]
                 h5_index += 1
 
     # Save the summed masks
@@ -162,21 +166,25 @@ def get_oars_location():
         print(error)
     np.save(os.path.join("stats", "oars_location", "summed_masks"), sum_masks)
 
-#######################################################################################################################
-# get_oars_limits generates a csv file containing the minimum index (first row) and maximum index (second row) of nonzero values in the summed_masks (cf get_oars_location)
+###############################################################################
+# get_oars_limits generates a csv file containing the minimum index (first row)
+#  and maximum index (second row) of nonzero values in the summed_masks 
+# (cf get_oars_location)
 def get_oars_limits():
 
     # Init
 
     # Load summed_masks
     try:
-        summed_masks = np.load(os.path.join("stats", "oars_location", "summed_masks.npy"))
+        summed_masks = np.load(os.path.join("stats", "oars_location", 
+                                            "summed_masks.npy"))
     except FileNotFoundError:
         print("File not found, first get the oar locations!")
         sys.exit()
 
     # Generate csv, a column by oar, first line = min, second line = max
-    with open(os.path.join("stats", "oars_location", "oars_limits.csv"), 'w', newline='') as csv_file:
+    with open(os.path.join("stats", "oars_location", "oars_limits.csv"), 'w', 
+                           newline='') as csv_file:
         fieldnames = [number_to_name(x) for x in range(nb_oars)]
         writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
         writer.writeheader()
@@ -192,25 +200,33 @@ def get_oars_limits():
         # Find dim1, dim2, dim3 limits
         for channel_index in range(summed_masks.shape[0]):
             list_of_nonzero_values = np.where(summed_masks[channel_index])
-            min_dim1[channel_index], max_dim1[channel_index] = min(list_of_nonzero_values[0]), max(list_of_nonzero_values[0])
-            min_dim2[channel_index], max_dim2[channel_index] = min(list_of_nonzero_values[1]), max(list_of_nonzero_values[1])
-            min_dim3[channel_index], max_dim3[channel_index] = min(list_of_nonzero_values[2]), max(list_of_nonzero_values[2])
+            min_dim1[channel_index], max_dim1[channel_index] = \
+                min(list_of_nonzero_values[0]), max(list_of_nonzero_values[0])
+            min_dim2[channel_index], max_dim2[channel_index] = \
+                min(list_of_nonzero_values[1]), max(list_of_nonzero_values[1])
+            min_dim3[channel_index], max_dim3[channel_index] = \
+                min(list_of_nonzero_values[2]), max(list_of_nonzero_values[2])
 
         # Write the stats: first line = min, second line = max
         first_row = {}
         second_row = {}
         count = 0
         for field in fieldnames:
-            first_row[field] = (min_dim1[count], min_dim2[count], min_dim3[count])
-            second_row[field] = (max_dim1[count], max_dim2[count], max_dim3[count])
+            first_row[field] = (min_dim1[count], 
+                                min_dim2[count], 
+                                min_dim3[count])
+            second_row[field] = (max_dim1[count], 
+                                 max_dim2[count], 
+                                 max_dim3[count])
             count += 1
 
         writer.writerow(first_row)
         writer.writerow(second_row)
 
 
-#######################################################################################################################
-# generate csv file containing number and percentage of nonzero pixels per organ
+###############################################################################
+# generate csv file containing number and percentage of nonzero pixels per 
+# organ
 def get_oars_proportion():
 
     # Init
@@ -218,12 +234,16 @@ def get_oars_proportion():
     tumor_volumes = ["ptv 1", "ctv 1", "gtv 1"]
 
     # Init csv
-    with open(os.path.join("stats", "oars_proportion", "oars_proportion.csv"), 'w', newline='') as csv_file:
+    with open(os.path.join("stats", "oars_proportion", "oars_proportion.csv"), 
+                           'w', newline='') as csv_file:
 
-        fieldnames_number = [number_to_name(x) + ' (number)' for x in range(nb_oars)]
-        fieldnames_percentage = [number_to_name(x) + ' (percentage)' for x in range(nb_oars)]
+        fieldnames_number = \
+            [number_to_name(x) + ' (number)' for x in range(nb_oars)]
+        fieldnames_percentage = \
+            [number_to_name(x) + ' (percentage)' for x in range(nb_oars)]
 
-        fieldnames = ['ID'] + [number_to_name(x) + ' ' + format for x in range(nb_oars) for format in ['(number)', '(percentage)']]
+        fieldnames = ['ID'] + [number_to_name(x) + ' ' + format for x in \
+            range(nb_oars) for format in ['(number)', '(percentage)']]
         writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
         writer.writeheader()
 
@@ -238,16 +258,17 @@ def get_oars_proportion():
             # For each organ
             data = h5py.File(os.path.join(path_to_data, ID + '.h5'), "r")
 
-            #print(data["masks"].shape[1], data["masks"].shape[2], data["masks"].shape[3])
-
             # Go through the channels
             h5_index = 0
             for channel_name in data["masks"].attrs["names"]:
                 if channel_name not in tumor_volumes:
                     # a. Find number of nonzero values
-                    number_of_nonzero[name_to_number(channel_name)] = len(np.where(data["masks"][h5_index, :, :, :])[0])
+                    number_of_nonzero[name_to_number(channel_name)] = \
+                        len(np.where(data["masks"][h5_index, :, :, :])[0])
                     # b. Divide by total number of values
-                    percentage_of_nonzero[name_to_number(channel_name)] = number_of_nonzero[name_to_number(channel_name)]/(np.product(data["masks"].shape[1:4]))
+                    percentage_of_nonzero[name_to_number(channel_name)] = \
+                        number_of_nonzero[name_to_number(channel_name)]/ \
+                            (np.product(data["masks"].shape[1:4])
                 h5_index += 1
 
             #print(number_of_nonzero)
@@ -271,7 +292,7 @@ def get_oars_proportion():
         # Closing
         csv_file.close()
 
-#######################################################################################################################
+###############################################################################
 # generate npy file containing list of IDs of patient having 20+ OARs
 def get_ids_20_plus():
 
@@ -288,11 +309,15 @@ def get_ids_20_plus():
         
     np.save(os.path.join('stats', 'oars_proportion', '20_plus_IDs'), IDs)
 
-#######################################################################################################################
-# generate npy file containing list of IDs of patient having the following OARs: 
+###############################################################################
+# generate npy file containing list of IDs of patient having the following 
+# OARs: 
 def get_ids_16_oars():
 
-    list_oars = ["canal medullaire", "canal medul pv", "oesophage", "cavite orale", "mandibule", "parotide g", "parotide d", "tronc", "trachee", "oreille int g", "oreille int d", "oeil g", "oeil d", "sous-max g", "tronc pv", "sous-max d"]
+    list_oars = ["canal medullaire", "canal medul pv", "oesophage", 
+                 "cavite orale", "mandibule", "parotide g", "parotide d", 
+                 "tronc", "trachee", "oreille int g", "oreille int d", 
+                 "oeil g", "oeil d", "sous-max g", "tronc pv", "sous-max d"]
 
     IDs = []
     # Go through the data
@@ -309,7 +334,7 @@ def get_ids_16_oars():
         
     np.save(os.path.join('stats', 'oars_proportion', '16_oars_IDs'), IDs)
 
-#######################################################################################################################
+###############################################################################
 # get average input size
 def get_average_input_height():
 
