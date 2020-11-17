@@ -153,14 +153,10 @@ validation_generator = DataGenerator("validation", validation_IDs, list_oars,
 
 # Define model
 <<<<<<< HEAD
+<<<<<<< HEAD
 model = unet_3D((params['patch_dim'][0], params['patch_dim'][1],
                     params['patch_dim'][2], params['n_input_channels']), 
                     args.model_depth, args.dropout_value, args.optim, args.lr)
-=======
-model = unet_3D((params['patch_dim'][0], params['patch_dim'][1], params['patch_dim'][2], params['n_input_channels']), int(model_depth), float(dropout_value), optim, float(lr))
-
-#model = unet((params['patch_dim'][0], params['patch_dim'][1], params['patch_dim'][2], params['n_input_channels']), params['n_output_channels'], float(dropout_value), int(n_convolutions_per_block), optim, float(lr))
->>>>>>> 86b391c... Added implementation using fcn_maker
 
 # Load pretrained weights
 if args.initial_weights is not None:
