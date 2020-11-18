@@ -64,6 +64,13 @@ parser.add_argument('-e', '--n_epochs', type=int, required=True,
                     help='Number of epochs')
 parser.add_argument('-w', '--initial_weights', type=str,
                     help='Path to the initial weights')
+parser.add_argument('-aug', '--augmentation', dest='augmentation',
+                    action='store_true', help='Use data augmentation')
+parser.add_argument('-no-aug', '--no-augmentation', dest='augmentation',
+                    action='store_false', help="Don't use data augmentation")
+
+# Additional defaults
+parser.set_defaults(augmentation=False)
 
 args = parser.parse_args()
 
@@ -121,7 +128,7 @@ Path(path_to_generated_files).mkdir(parents=True, exist_ok=True)
 # Load IDs
 IDs = np.load(os.path.join('stats', 'oars_proportion', '16_oars_IDs.npy')) 
 # 430 patients
-IDs = IDs[:200] # TODO
+IDs = IDs[:10] # TODO
 
 # Split in train 70%, validation 15%, test 15%
 train_IDs, other_IDs = train_test_split(IDs, test_size=0.3)
@@ -144,7 +151,8 @@ params = {'patch_dim': (256, 256, 64),
           'n_input_channels': 1,
           'n_output_channels': 1,
           'dataset': h5_dataset,
-          'shuffle': True}
+          'shuffle': True,
+          'augmentation': args.augmentation}
 
 # Generators
 training_generator = DataGenerator("train", train_IDs, list_oars, **params)
