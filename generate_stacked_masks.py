@@ -23,6 +23,8 @@ IDs = ['00779']
 patch_dim = (256, 256, 64)
 n_input_channels = 1
 n_output_channels = 1
+# L (Length) and W (Width) chosen empirically to include most organs in 
+# their entirety. 
 L, W = 512//2 - patch_dim[1]//2, 64
 
 two_groups = True

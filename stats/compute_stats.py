@@ -121,8 +121,7 @@ def number_to_name(channel_number):
 #######################################################################################################################
 ## Init
 # Paths
-pwd = os.getcwd()
-path_to_data = os.path.join(pwd, "..", "data", "CHUM", "h5_v2")
+path_to_data = os.path.join("..", "data", "CHUM", "h5_v2")
 
 # Constants
 nb_oars = 17
@@ -248,7 +247,7 @@ def get_oars_proportion():
                     # a. Find number of nonzero values
                     number_of_nonzero[name_to_number(channel_name)] = len(np.where(data["masks"][h5_index, :, :, :])[0])
                     # b. Divide by total number of values
-                    percentage_of_nonzero[name_to_number(channel_name)] = number_of_nonzero[name_to_number(channel_name)]/(data["masks"].shape[1]*data["masks"].shape[2]*data["masks"].shape[3])
+                    percentage_of_nonzero[name_to_number(channel_name)] = number_of_nonzero[name_to_number(channel_name)]/(np.product(data["masks"].shape[1:4]))
                 h5_index += 1
 
             #print(number_of_nonzero)
