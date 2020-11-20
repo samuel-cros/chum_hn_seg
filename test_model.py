@@ -3,6 +3,7 @@
 #######################################################################################################################
 # Math
 import numpy as np
+from utils.data_standardization import standardize
 
 # DeepL
 import keras
@@ -133,6 +134,8 @@ path_to_data = os.path.join(pwd, "..", "data", "CHUM", "h5_v2")
 patch_dim = (256, 256, 64)
 n_input_channels = 1
 n_output_channels = 1
+# L (Length) and W (Width) chosen empirically to include most organs in 
+# their entirety
 L, W = 512//2 - patch_dim[1]//2, 64
 
 # Data
@@ -177,7 +180,7 @@ model.summary()
 model.load_weights(os.path.join(path_to_model_dir, model_name))
 
 # Load data IDs
-list_IDs = parse_IDs(list_IDs_if_manual) if (train_validation_or_test_or_manual == "manual") else (np.load(os.path.join(path_to_model_dir, validation_or_test_or_manual + "_IDs.npy")))
+list_IDs = parse_IDs(list_IDs_if_manual) if (train_validation_or_test_or_manual == "manual") else (np.load(os.path.join(path_to_model_dir, train_validation_or_test_or_manual + "_IDs.npy")))
 
 # Saving results
 path_to_results = os.path.join(path_to_model_dir, 'results_' + train_validation_or_test_or_manual)
@@ -301,18 +304,14 @@ for ID in list_IDs:
     # Predict one patch
     #H = ct.shape[2]//2 - patch_dim[2]//2
     #patch_formatted = np.zeros((1, patch_dim[0], patch_dim[1], patch_dim[2], n_input_channels))
-    #patch_formatted[0, :, :, :, 0] = ct[L:L+patch_dim[0], W:W+patch_dim[1], H:H+patch_dim[2]]
-    #patch_formatted -= -1000.0
-    #patch_formatted /= 3071.0
+    #patch_formatted[0, :, :, :, 0] = standardize(ct[L:L+patch_dim[0], W:W+patch_dim[1], H:H+patch_dim[2]])
     #prediction = model.predict(patch_formatted)
     #prediction = prediction[0, :, :, :]
 
     # Predict on the whole height
     # Prepare input
     patch_formatted = np.zeros((1, patch_dim[0], patch_dim[1], ct.shape[2], n_input_channels))
-    patch_formatted[0, :, :, :, 0] = ct[L:L+patch_dim[0], W:W+patch_dim[1], :]
-    patch_formatted -= -1000.0
-    patch_formatted /= 3071.0
+    patch_formatted[0, :, :, :, 0] = standardize(ct[L:L+patch_dim[0], W:W+patch_dim[1], :])
 
     # Prepare prediction_all
     prediction_all = np.zeros((patch_dim[0], patch_dim[1], ct.shape[2], n_output_channels))

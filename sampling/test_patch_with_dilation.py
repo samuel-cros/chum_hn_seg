@@ -9,16 +9,17 @@ from data_tools.binary_morphology import *
 
 # IO
 import os
+import sys
+sys.path.append(os.getcwd())
 import h5py
 import matplotlib.pyplot as plt
+
+# Others
+from utils.data_standardization import standardize
 
 #############################################################
 ### MAIN
 #############################################################
-
-# Paths
-pwd = os.getcwd()
-chum_directory = os.path.join(pwd, "..", "..", "data", "CHUM", "h5_v2")
 
 # Parameters
 patch_dim = (256, 256, 64)
@@ -30,7 +31,7 @@ ID = '00726'
 dilation_radius = 20
 
 # Open input file
-dataset = h5py.File(os.path.join('..', '..', 'data', 'CHUM', 'h5_v3', 'regenerated_dataset.h5'), "r")
+dataset = h5py.File(os.path.join('..', 'data', 'CHUM', 'h5_v3', 'regenerated_dataset.h5'), "r")
 input_shape = dataset[ID + '/ct'].shape
 
 #############################################################
@@ -80,16 +81,10 @@ for oar in list_oars:
 ### INPUT
 #############################################################
 # Init
-min_value = -1000.0 # -1000.0, search DONE for all 1000+ cases
-max_value = 3071.0 # 3071.0, search DONE for all 1000+ cases
-new_input = np.full((patch_dim[0], patch_dim[1], patch_dim[2], n_input_channels), min_value)
+new_input = np.zeros((patch_dim[0], patch_dim[1], patch_dim[2], n_input_channels))
 
 # Fill the CT channel
-new_input[L_offset:L_offset+L_dist, W_offset:W_offset+W_dist, H_offset:H_offset+H_dist, 0] = dataset[ID + '/ct'][L_lower:L_upper, W_lower:W_upper, H_lower:H_upper]
-
-# Scaling factor
-new_input[:, :, :, 0] -= min_value 
-new_input[:, :, :, 0] /= (max_value - min_value)
+new_input[L_offset:L_offset+L_dist, W_offset:W_offset+W_dist, H_offset:H_offset+H_dist, 0] = standardize(dataset[ID + '/ct'][L_lower:L_upper, W_lower:W_upper, H_lower:H_upper])
 
 #############################################################
 ### DISPLAY

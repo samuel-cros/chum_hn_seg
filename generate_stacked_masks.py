@@ -3,6 +3,7 @@
 #######################################################################################################################
 # Math
 import numpy as np
+from utils.data_standardization import standardize
 
 # DeepL
 import keras
@@ -130,9 +131,7 @@ for ID in IDs:
     
     # Prepare input
     patch_formatted = np.zeros((1, patch_dim[0], patch_dim[1], ct.shape[2], n_input_channels))
-    patch_formatted[0, :, :, :, 0] = ct[L:L+patch_dim[0], W:W+patch_dim[1], :]
-    patch_formatted -= -1000.0
-    patch_formatted /= 3071.0
+    patch_formatted[0, :, :, :, 0] = standardize(ct[L:L+patch_dim[0], W:W+patch_dim[1], :])
 
     ##########################
     # ONE GROUP

@@ -8,6 +8,7 @@ import numpy as np
 import keras
 from keras import backend as K
 import tensorflow as tf
+from utils.data_standardization import standardize
 
 # IO
 import sys
@@ -49,11 +50,17 @@ dropout_value = 0.0
 n_convolutions_per_block = 2
 
 if len(sys.argv) >=7:
+    # Path to the tested model
     path_to_model_dir = sys.argv[1]
+    # Model filename
     model_name = sys.argv[2]
+    # Model depth: either 64 or 512
     model_depth = sys.argv[3]
+    # Whether the organ is usually centered or up in the volume
     mode_for_H = sys.argv[4]
+    # The kind of oars predicted
     kind_of_oars = sys.argv[5]
+    # Set to generate slices on
     train_validation_or_test_or_manual = sys.argv[6]
     if train_validation_or_test_or_manual == 'manual':
         list_IDs_if_manual = sys.argv[7]
@@ -127,6 +134,8 @@ path_to_data = os.path.join(pwd, "..", "data", "CHUM", "h5_v2")
 patch_dim = (256, 256, 64)
 n_input_channels = 1
 n_output_channels = 1
+# L (Length) and W (Width) chosen empirically to include most organs in 
+# their entirety.
 L, W = 512//2 - patch_dim[1]//2, 64
 
 # Data
@@ -218,8 +227,9 @@ for ID in list_IDs:
     n = 0
     for channel_name in masks.attrs['names']:
         if channel_name in list_oars:
-            groundtruth[:, :, :] += masks[n, L:L+patch_dim[0], W:W+patch_dim[1], H:H+patch_dim[2]]
+            groundtruth = np.logical_or(groundtruth, masks[n, L:L+patch_dim[0], W:W+patch_dim[1], H:H+patch_dim[2]])
         n += 1
+    groundtruth = groundtruth.astype(int)
 
     ##########################
     # PREDICTED VOLUME
@@ -227,9 +237,7 @@ for ID in list_IDs:
 
     # Predict one patch
     patch_formatted = np.zeros((1, patch_dim[0], patch_dim[1], patch_dim[2], n_input_channels))
-    patch_formatted[0, :, :, :, 0] = ct[L:L+patch_dim[0], W:W+patch_dim[1], H:H+patch_dim[2]]
-    patch_formatted -= -1000.0
-    patch_formatted /= 3071.0
+    patch_formatted[0, :, :, :, 0] = standardize(ct[L:L+patch_dim[0], W:W+patch_dim[1], H:H+patch_dim[2]])
     prediction = model.predict(patch_formatted)
     prediction = prediction[0, :, :, :]
 
@@ -292,9 +300,9 @@ for ID in list_IDs:
 
         #print('Computing Dice..')
         # Produce Dice
-        dice_join = np.sum(np.multiply(groundtruth[:,:,h], prediction[:,:,h,0]), axis=(0,1))
-        dice_union = np.sum(groundtruth[:,:,h], axis=(0,1)) + np.sum(prediction[:,:,h,0], axis=(0,1))
-        dice_coeff = (2*dice_join + 1) / (dice_union + 1)
+        dice_intersection = np.sum(np.multiply(groundtruth[:,:,h], prediction[:,:,h,0]), axis=(0,1))
+        dice_summation = np.sum(groundtruth[:,:,h], axis=(0,1)) + np.sum(prediction[:,:,h,0], axis=(0,1))
+        dice_coeff = (2*dice_intersection + 1) / (dice_summation + 1)
 
         #print(dice_coeff)
 
