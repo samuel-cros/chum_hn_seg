@@ -28,7 +28,6 @@ n_input_channels = 1
 
 list_oars = ["tronc"]
 ID = '00726'
-dilation_radius = 20
 
 # Open input file
 dataset = h5py.File(os.path.join('..', 'data', 'CHUM', 'h5_v3', 'regenerated_dataset.h5'), "r")

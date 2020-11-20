@@ -16,13 +16,12 @@ import matplotlib.pyplot as plt
 ### MAIN
 #######################################################################################################################
 # Paths
-pwd = os.getcwd()
-path_to_data = os.path.join(pwd, "..", "..", "data", "CHUM", "h5_v2")
+path_to_data = os.path.join("..", "data", "CHUM", "h5_v2")
 
 # Load example patient
 
 # Init
-IDs = np.load(os.path.join('..', 'stats', 'oars_proportion', '20_plus_IDs.npy'))
+IDs = np.load(os.path.join('stats', 'oars_proportion', '16_oars_IDs.npy'))
 tumor_volumes = ["ptv 1", "ctv 1", "gtv 1"]
 data = h5py.File(os.path.join(path_to_data, IDs[0] + '.h5'), "r")
 
@@ -42,7 +41,7 @@ for h in range(0, data["masks"].shape[3], 4):
 '''
 
 # Run dilation function
-dilated_data = binary_dilation(data["masks"][4], (1,1,1), 15)
+dilated_data = binary_dilation(data["masks"][4], (1,1,4), 0.8*256//2)
 dilated_data[np.where(data["masks"][4])] = 0
 
 print(dilated_data.shape)
