@@ -235,8 +235,6 @@ for ID in list_IDs:
     ##########################
     # PREDICTED VOLUME
     ##########################
-    min_value = -1000.0 # -1000.0, search DONE for all 1000+ cases
-    max_value = 3071.0 # 3071.0, search DONE for all 1000+ cases
 
     # Predict one patch
     patch_formatted = np.zeros((1, params['patch_dim'][0],

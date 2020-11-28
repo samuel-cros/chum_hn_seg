@@ -282,22 +282,6 @@ for ID in list_IDs:
     ##########################
     # PREDICTED VOLUME
     ##########################
-    min_value = -1000.0 # -1000.0, search DONE for all 1000+ cases
-    max_value = 3071.0 # 3071.0, search DONE for all 1000+ cases
-
-    # Predict one patch
-    #H = ct.shape[2]//2 - params['patch_dim'][2]//2
-    #patch_formatted = np.zeros((1, params['patch_dim'][0], 
-    #                               params['patch_dim'][1], 
-    #                               params['patch_dim'][2], 
-    #                           params['n_output_channels']))
-    #patch_formatted[0, :, :, :, 0] = ct[L:L+params['patch_dim'][0], 
-    #                                       W:W+params['patch_dim'][1], 
-    #                                       H:H+params['patch_dim'][2]]
-    #patch_formatted -= min_value 
-    #patch_formatted /= (max_value - min_value)
-    #prediction = model.predict(patch_formatted)
-    #prediction = prediction[0, :, :, :]
 
     # Predict on the whole height
     # Prepare input

@@ -117,7 +117,7 @@ Path(path_to_generated_files).mkdir(parents=True, exist_ok=True)
 ###############################################
 ## Splitting
 ###############################################
-# Load IDs
+# Load IDs of patients with the required 16 oars
 IDs = np.load(os.path.join('stats', 'oars_proportion', '16_oars_IDs.npy')) 
 # 430 patients
 IDs = IDs[:200] # TODO
