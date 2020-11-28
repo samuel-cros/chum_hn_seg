@@ -98,7 +98,9 @@ class DataGenerator(keras.utils.Sequence):
                                  input_shape[2]))
 
         for oar in self.list_oars:
-            dilated_mask += self.dataset[ID + '/dilated_mask/' + oar]
+            dilated_mask = np.logical_or(dilated_mask, 
+                        self.dataset[ID +'/dilated_mask/'+ oar])
+        dilated_mask = dilated_mask.astype(int)
         
         # Pick a nonzero value
         nonzero_values = np.where(dilated_mask)
@@ -108,9 +110,9 @@ class DataGenerator(keras.utils.Sequence):
         H_center = nonzero_values[2][random_index]
 
         # Compute patch position
-        L = L_center - self.patch_dim[0]
-        W = W_center - self.patch_dim[1]
-        H = H_center - self.patch_dim[2]
+        L = L_center - self.patch_dim[0]//2
+        W = W_center - self.patch_dim[1]//2
+        H = H_center - self.patch_dim[2]//2
 
         ## Compute offset
         # Idea = we need to use padding when the patch lands outside the input
@@ -165,28 +167,23 @@ class DataGenerator(keras.utils.Sequence):
                                                         W_lower:W_upper, 
                                                         H_lower:H_upper])
 
-
-        # Scaling factor
-        new_input[:, :, :, 0] -= min_value 
-        new_input[:, :, :, 0] /= (max_value - min_value)
-
         if self.augmentation: # TOREDO
 
-                #############################################################
-                ### Augmentation
-                #############################################################
-                # Define args
-                args = dict(spline_warp=True, warp_sigma=50, warp_grid_size=3)
+            #############################################################
+            ### Augmentation
+            #############################################################
+            # Define args
+            args = dict(spline_warp=True, warp_sigma=50, warp_grid_size=3)
 
-                # Apply transform
-                new_input_a, new_output_a = \
-                    image_random_transform(x=new_input[:,:,:,0], 
-                                        y=new_output[:,:,:,0], 
-                                        **args, channel_axis=2)
+            # Apply transform
+            new_input_a, new_output_a = \
+                image_random_transform(x=new_input[:,:,:,0], 
+                                    y=new_output[:,:,:,0], 
+                                    **args, channel_axis=2)
 
-                # Reformat
-                new_input[:, :, :, 0] = new_input_a[:, :, :]
-                new_output[:, :, :, 0] = new_output_a[:, :, :]
+            # Reformat
+            new_input[:, :, :, 0] = new_input_a[:, :, :]
+            new_output[:, :, :, 0] = new_output_a[:, :, :]
             
         #############################################################
         ### Return
