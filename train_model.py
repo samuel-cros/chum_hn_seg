@@ -124,7 +124,7 @@ Path(path_to_generated_files).mkdir(parents=True, exist_ok=True)
 ###############################################
 ## Splitting
 ###############################################
-# Load IDs
+# Load IDs of patients with the required 16 oars
 IDs = np.load(os.path.join('stats', 'oars_proportion', '16_oars_IDs.npy')) 
 # 430 patients
 IDs = IDs[:10] # TODO
@@ -160,9 +160,14 @@ validation_generator = DataGenerator("validation", validation_IDs, list_oars,
                                         **params)
 
 # Define model
-model = unet_3D((params['patch_dim'][0], params['patch_dim'][1],
-                    params['patch_dim'][2], n_input_channels), 
-                    args.model_depth, args.dropout_value, args.optim, args.lr)
+model = unet_3D(input_shape=(params['patch_dim'][0], 
+                             params['patch_dim'][1],
+                             params['patch_dim'][2], 
+                             params['n_input_channels']), 
+                model_depth=args.model_depth, 
+                dropout=args.dropout_value, 
+                optim=args.optim, 
+                lr=args.lr)
 
 # Load pretrained weights
 if args.initial_weights is not None:
