@@ -32,7 +32,6 @@ def dice_coefficient_loss(y_true, y_pred):
 ## Net ####################################################################
 ###########################################################################
 def unet_3D(input_shape, model_depth, dropout, optim, lr):
-
     model = assemble_unet(input_shape=input_shape, init_num_filters=(16, 16), 
                           num_classes=1, 
                           num_pooling=int(math.log(model_depth, 2)-4), 
@@ -53,7 +52,7 @@ def unet_3D(input_shape, model_depth, dropout, optim, lr):
                       loss = dice_coefficient_loss, 
                       metrics = [dice_coefficient])
     else:
-        raise NameError('Unknown optimizer.')
+        raise ValueError('Unknown optimizer.')
 
     model.summary()
 
