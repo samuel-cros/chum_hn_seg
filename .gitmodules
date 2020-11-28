@@ -1,0 +1,3 @@
+[submodule "submodules/fcn_maker"]
+	path = submodules/fcn_maker
+	url = https://github.com/veugene/fcn_maker.git
