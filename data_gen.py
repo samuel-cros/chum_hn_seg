@@ -25,14 +25,14 @@ dilation_radius = 20
 # DataGenerator
 class DataGenerator(keras.utils.Sequence):
     'Generates data for Keras'
-    def __init__(self, train_or_validation, list_IDs, list_oars, patch_dim, batch_size, n_input_channels, n_output_channels, dataset, shuffle=True, augmentation=False):
+    def __init__(self, train_or_validation, list_IDs, list_oars, patch_dim, batch_size, dataset, shuffle=True, augmentation=False):
         'Initialization'
         self.patch_dim = patch_dim
         self.batch_size = batch_size
         self.list_IDs = list_IDs
         self.list_oars = list_oars
-        self.n_input_channels = n_input_channels
-        self.n_output_channels = n_output_channels
+        self.n_input_channels = 1
+        self.n_output_channels = 1
         self.shuffle = shuffle
         self.augmentation = augmentation
         self.dataset = dataset

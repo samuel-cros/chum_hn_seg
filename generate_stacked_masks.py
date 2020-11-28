@@ -70,7 +70,7 @@ oar_patches = [mpatches.Patch(color=oars_colors_dict[oar], label= oar) for oar i
 
 # Paths
 pwd = os.getcwd()
-path_to_data = os.path.join(pwd, "..", "data", "CHUM", "h5_v2")
+path_to_data = os.path.join(pwd, "..", "data", "CHUM", "h5_v2") # TODO, update to new dataset
 
 # Define model archi
 optim, lr, dropout_value, n_convolutions_per_block = 'adam', '5e-4', '0.0', '2' # doesn't matter at test time

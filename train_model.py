@@ -64,7 +64,7 @@ if len(sys.argv) >= 7:
     elif model_depth == '512':
         from unet_seg_512 import unet
     else:
-        raise NameError('Unhandled model depth: ' + model_depth)
+        raise ValueError('Unhandled model depth: ' + model_depth)
 
 else:
     print("Wrong number of arguments, see example below.")
@@ -93,7 +93,7 @@ else:
     if kind_of_oars in all_oars:
         list_oars = [kind_of_oars]
     else:
-        raise NameError('Unknown kind of oars: ' + kind_of_oars)
+        raise ValueError('Unknown kind of oars: ' + kind_of_oars)
 
 # Manage folder for generated files
 Path(path_to_main_folder).mkdir(parents=True, exist_ok=True)
@@ -125,10 +125,11 @@ np.save(os.path.join(path_to_generated_files, "test_IDs"), test_IDs)
 ###############################################
 h5_dataset = h5py.File(os.path.join('..', 'data', 'CHUM', 'h5_v3', 'regenerated_dataset.h5'), "r")
 
+n_input_channels= 1
+n_output_channels= 1
+
 params = {'patch_dim': (256, 256, 64),
           'batch_size': 1,
-          'n_input_channels': 1,
-          'n_output_channels': 1,
           'dataset': h5_dataset,
           'shuffle': True}
 
@@ -137,7 +138,7 @@ training_generator = DataGenerator("train", train_IDs, list_oars, **params)
 validation_generator = DataGenerator("validation", validation_IDs, list_oars, **params)
 
 # Define model
-model = unet((params['patch_dim'][0], params['patch_dim'][1], params['patch_dim'][2], params['n_input_channels']), params['n_output_channels'], float(dropout_value), int(n_convolutions_per_block), optim, float(lr))
+model = unet((params['patch_dim'][0], params['patch_dim'][1], params['patch_dim'][2], n_input_channels), n_output_channels, float(dropout_value), int(n_convolutions_per_block), optim, float(lr))
 
 # Load pretrained weights
 if len(sys.argv) == 8:

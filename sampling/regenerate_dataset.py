@@ -49,6 +49,7 @@ for ID in IDs:
     # Add masks
     # For each organ
     h5_index = 0
+    # attrs["names"] contains oar names as well as ptv 1, ctv 1 and gtv 1
     for channel_name in data["masks"].attrs["names"]:
         if channel_name not in extra_volumes:
 

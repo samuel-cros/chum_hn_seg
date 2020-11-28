@@ -60,7 +60,7 @@ if len(sys.argv) >=6:
     elif model_depth == '512':
         from unet_seg_512 import unet
     else:
-        raise NameError('Unhandled model depth: ' + model_depth)
+        raise ValueError('Unhandled model depth: ' + model_depth)
 
     # Manage OARs
     all_oars = ["canal medullaire", "canal medul pv", "oesophage", "cavite orale", "mandibule", "parotide g", "parotide d", "tronc", "tronc pv", "trachee", "oreille int g", "oreille int d", "oeil g", "oeil d", "sous-max g", "sous-max d", "nerf optique g"]
@@ -92,7 +92,7 @@ if len(sys.argv) >=6:
             list_oars = [kind_of_oars]
             oar_colors = ['red']
         else:
-            raise NameError('Unknown kind of oars: ' + kind_of_oars)
+            raise ValueError('Unknown kind of oars: ' + kind_of_oars)
 
     dict_oars = {}
     count = 0
