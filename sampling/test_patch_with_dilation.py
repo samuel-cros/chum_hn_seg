@@ -30,7 +30,8 @@ list_oars = ["tronc"]
 ID = '00726'
 
 # Open input file
-dataset = h5py.File(os.path.join('..', 'data', 'CHUM', 'h5_v3', 'regenerated_dataset.h5'), "r")
+dataset = h5py.File(os.path.join('..', '..', 'data', 'CHUM', 'h5_v3', 
+                                 'regenerated_dataset.h5'), "r")
 input_shape = dataset[ID + '/ct'].shape
 
 #############################################################
@@ -59,31 +60,52 @@ H = H_center - patch_dim[2]//2
 
 ## Compute offset
 # Idea = we need to use padding when the patch lands outside the input
-L_offset, W_offset, H_offset = abs(min(0, L)), abs(min(0, W)), abs(min(0, H))
+L_offset = abs(min(0, L))
+W_offset = abs(min(0, W))
+H_offset = abs(min(0, H))                                   
 
-L_lower, W_lower, H_lower = max(0, L), max(0, W), max(0, H)
-L_upper, W_upper, H_upper = min(input_shape[0]-1, L+patch_dim[0]), min(input_shape[1]-1, W+patch_dim[1]), min(input_shape[2]-1, H+patch_dim[2])
+L_lower = max(0, L)
+W_lower = max(0, W)
+H_lower = max(0, H)
 
-L_dist, W_dist, H_dist = L_upper - L_lower, W_upper - W_lower, H_upper - H_lower
+L_upper = min(input_shape[0]-1, L+self.patch_dim[0])
+W_upper = min(input_shape[1]-1, W+self.patch_dim[1])
+H_upper = min(input_shape[2]-1, H+self.patch_dim[2])                                
+
+L_dist = L_upper - L_lower
+W_dist = W_upper - W_lower
+H_dist = H_upper - H_lower 
 
 #############################################################
 ### OUTPUT
 #############################################################
 
 # Init
-new_output = np.zeros((patch_dim[0], patch_dim[1], patch_dim[2], n_output_channels)) #
+new_output = np.zeros((patch_dim[0], patch_dim[1], patch_dim[2], 
+                       n_output_channels)) #
 
 for oar in list_oars:
-        new_output[L_offset:L_offset+L_dist, W_offset:W_offset+W_dist, H_offset:H_offset+H_dist, 0] += dataset[ID + '/mask/' + oar][L_lower:L_upper, W_lower:W_upper, H_lower:H_upper]
+        new_output[L_offset:L_offset+L_dist, 
+                   W_offset:W_offset+W_dist, 
+                   H_offset:H_offset+H_dist, 0] += \
+                       dataset[ID + '/mask/' + oar][L_lower:L_upper, 
+                                                    W_lower:W_upper, 
+                                                    H_lower:H_upper]
 
 #############################################################
 ### INPUT
 #############################################################
 # Init
-new_input = np.zeros((patch_dim[0], patch_dim[1], patch_dim[2], n_input_channels))
+new_input = np.zeros((patch_dim[0], patch_dim[1], patch_dim[2], 
+                      n_input_channels))
 
 # Fill the CT channel
-new_input[L_offset:L_offset+L_dist, W_offset:W_offset+W_dist, H_offset:H_offset+H_dist, 0] = standardize(dataset[ID + '/ct'][L_lower:L_upper, W_lower:W_upper, H_lower:H_upper])
+new_input[L_offset:L_offset+L_dist, 
+          W_offset:W_offset+W_dist, 
+          H_offset:H_offset+H_dist, 0] = \
+              standardize(dataset[ID + '/ct'][L_lower:L_upper, 
+                                              W_lower:W_upper, 
+                                              H_lower:H_upper])
 
 #############################################################
 ### DISPLAY
