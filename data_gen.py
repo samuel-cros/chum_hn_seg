@@ -107,9 +107,9 @@ class DataGenerator(keras.utils.Sequence):
         H_center = nonzero_values[2][random_index]
 
         # Compute patch position
-        L = L_center - self.patch_dim[0]
-        W = W_center - self.patch_dim[1]
-        H = H_center - self.patch_dim[2]
+        L = L_center - self.patch_dim[0]//2
+        W = W_center - self.patch_dim[1]//2
+        H = H_center - self.patch_dim[2]//2
 
         ## Compute offset
         # Idea = we need to use padding when the patch lands outside the input
@@ -163,11 +163,6 @@ class DataGenerator(keras.utils.Sequence):
                     standardize(self.dataset[ID + '/ct'][L_lower:L_upper, 
                                                         W_lower:W_upper, 
                                                         H_lower:H_upper])
-
-
-        # Scaling factor
-        new_input[:, :, :, 0] -= min_value 
-        new_input[:, :, :, 0] /= (max_value - min_value)
 
         if self.augmentation: # TOREDO
 
