@@ -3,6 +3,7 @@
 #######################################################################################################################
 # Math
 import numpy as np
+from utils.data_standardization import standardize
 
 # DeepL
 import keras
@@ -59,7 +60,7 @@ if len(sys.argv) >=6:
     elif model_depth == '512':
         from unet_seg_512 import unet
     else:
-        raise NameError('Unhandled model depth: ' + model_depth)
+        raise ValueError('Unhandled model depth: ' + model_depth)
 
     # Manage OARs
     all_oars = ["canal medullaire", "canal medul pv", "oesophage", "cavite orale", "mandibule", "parotide g", "parotide d", "tronc", "tronc pv", "trachee", "oreille int g", "oreille int d", "oeil g", "oeil d", "sous-max g", "sous-max d", "nerf optique g"]
@@ -91,7 +92,7 @@ if len(sys.argv) >=6:
             list_oars = [kind_of_oars]
             oar_colors = ['red']
         else:
-            raise NameError('Unknown kind of oars: ' + kind_of_oars)
+            raise ValueError('Unknown kind of oars: ' + kind_of_oars)
 
     dict_oars = {}
     count = 0
@@ -133,6 +134,8 @@ path_to_data = os.path.join(pwd, "..", "data", "CHUM", "h5_v2")
 patch_dim = (256, 256, 64)
 n_input_channels = 1
 n_output_channels = 1
+# L (Length) and W (Width) chosen empirically to include most organs in 
+# their entirety
 L, W = 512//2 - patch_dim[1]//2, 64
 
 # Data
@@ -301,18 +304,14 @@ for ID in list_IDs:
     # Predict one patch
     #H = ct.shape[2]//2 - patch_dim[2]//2
     #patch_formatted = np.zeros((1, patch_dim[0], patch_dim[1], patch_dim[2], n_input_channels))
-    #patch_formatted[0, :, :, :, 0] = ct[L:L+patch_dim[0], W:W+patch_dim[1], H:H+patch_dim[2]]
-    #patch_formatted -= -1000.0
-    #patch_formatted /= 3071.0
+    #patch_formatted[0, :, :, :, 0] = standardize(ct[L:L+patch_dim[0], W:W+patch_dim[1], H:H+patch_dim[2]])
     #prediction = model.predict(patch_formatted)
     #prediction = prediction[0, :, :, :]
 
     # Predict on the whole height
     # Prepare input
     patch_formatted = np.zeros((1, patch_dim[0], patch_dim[1], ct.shape[2], n_input_channels))
-    patch_formatted[0, :, :, :, 0] = ct[L:L+patch_dim[0], W:W+patch_dim[1], :]
-    patch_formatted -= -1000.0
-    patch_formatted /= 3071.0
+    patch_formatted[0, :, :, :, 0] = standardize(ct[L:L+patch_dim[0], W:W+patch_dim[1], :])
 
     # Prepare prediction_all
     prediction_all = np.zeros((patch_dim[0], patch_dim[1], ct.shape[2], n_output_channels))

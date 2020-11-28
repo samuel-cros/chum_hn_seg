@@ -11,7 +11,7 @@ import sys
 
 # Paths
 working_directory_path = os.getcwd()
-input_directory = os.path.join(working_directory_path, "..", "data", "CHUM", "h5_OLD_WRONG_v2")
+input_directory = os.path.join(working_directory_path, "..", "data", "CHUM", "h5_v2")
 
 # Other
 count = 0
