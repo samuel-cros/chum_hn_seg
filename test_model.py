@@ -173,9 +173,14 @@ oar_patches = [mpatches.Patch(color=oars_colors_dict[oar], label= oar) for
 
 ## Loading
 # Load model
-model = unet_3D((params['patch_dim'][0], params['patch_dim'][1],
-                    params['patch_dim'][2], params['n_input_channels']), 
-                    args.model_depth, 0.0, 'adam', 5e-4)
+model = unet_3D(input_shape=(params['patch_dim'][0], 
+                             params['patch_dim'][1],
+                             params['patch_dim'][2], 
+                             params['n_input_channels']), 
+                model_depth=args.model_depth, 
+                dropout=0.0, 
+                optim='adam', 
+                lr=5e-4)
 
 model.summary()
 
