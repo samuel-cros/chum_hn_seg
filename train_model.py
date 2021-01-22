@@ -1,9 +1,3 @@
-## Seeding
-from numpy.random import seed
-seed(1)
-from tensorflow import set_random_seed
-set_random_seed(2)
-
 ## Imports
 # Math
 import numpy as np
@@ -16,7 +10,7 @@ from data_gen import DataGenerator
 from keras.callbacks import ModelCheckpoint
 import tensorflow as tf
 from keras.layers import *
-from model import unet_3D
+from model import unet_3D, load_pretrained_weights
 
 # IO
 import argparse
@@ -46,7 +40,7 @@ session = tf.Session(config=config)
 ## Input
 ###############################################
 
-parser = argparse.ArgumentParser(description='Test a given model')
+parser = argparse.ArgumentParser(description='Train a given model')
 
 # Arguments
 parser.add_argument('-path', '--path_to_main_folder', type=str, required=True,
@@ -68,11 +62,17 @@ parser.add_argument('-aug', '--augmentation', dest='augmentation',
                     action='store_true', help='Use data augmentation')
 parser.add_argument('-no-aug', '--no-augmentation', dest='augmentation',
                     action='store_false', help="Don't use data augmentation")
+parser.add_argument('-seed', type=int, required=True, help='Random seeding')
 
 # Additional defaults
 parser.set_defaults(augmentation=False)
-
 args = parser.parse_args()
+
+## Seeding
+from numpy.random import seed
+seed(args.seed)
+from tensorflow import set_random_seed
+set_random_seed(args.seed+1)
 
 # Manage OARs
 all_oars = ["canal medullaire", "canal medul pv", "oesophage", "cavite orale", 
@@ -141,27 +141,36 @@ np.save(os.path.join(path_to_generated_files, "test_IDs"), test_IDs)
 ###############################################
 ## Parameters
 ###############################################
-h5_dataset = h5py.File(os.path.join('..', 'data', 'CHUM', 'h5_v3', 
+h5_dataset = h5py.File(os.path.join('..', 
+                                    'data', 
                                     'regenerated_dataset.h5'), "r")
 
 n_input_channels= 1
 
-params = {'patch_dim': (256, 256, 64),
+training_params = {'patch_dim': (256, 256, 64),
           'batch_size': 1,
           'dataset': h5_dataset,
-          'shuffle': True}
+          'shuffle': True,
+          'augmentation': args.augmentation}
+
+validation_params = {'patch_dim': (256, 256, 64),
+          'batch_size': 1,
+          'dataset': h5_dataset,
+          'shuffle': True,
+          'augmentation': False}
 
 # Generators
-training_generator = DataGenerator("train", train_IDs, list_oars, **params,
-                                   'augmentation': args.augmentation)
+training_generator = DataGenerator("train", train_IDs, list_oars, 
+                                   **training_params)
 validation_generator = DataGenerator("validation", validation_IDs, list_oars,
-                                     **params)
+                                     **validation_params)
 
 # Define model
-model = unet_3D(input_shape=(params['patch_dim'][0], 
-                             params['patch_dim'][1],
-                             params['patch_dim'][2], 
-                             n_input_channels), 
+input_shape = (training_params['patch_dim'][0], 
+               training_params['patch_dim'][1],
+               training_params['patch_dim'][2], 
+               n_input_channels)
+model = unet_3D(input_shape=input_shape, 
                 number_of_pooling=args.number_of_pooling, 
                 dropout=args.dropout_value, 
                 optim=args.optim, 
@@ -169,7 +178,7 @@ model = unet_3D(input_shape=(params['patch_dim'][0],
 
 # Load pretrained weights
 if args.initial_weights is not None:
-    model.load_weights(args.initial_weights)
+    model = load_pretrained_weights(model, input_shape, args)
 
 # Callbacks
 mc = ModelCheckpoint(os.path.join(path_to_generated_files, 'best_model.h5'), 
