@@ -25,8 +25,7 @@ class DataGenerator(keras.utils.Sequence):
     'Generates data for Keras'
     def __init__(
         self, train_or_validation, list_IDs, list_oars, patch_dim, batch_size, 
-        n_input_channels, n_output_channels, dataset, shuffle=True, 
-        augmentation=False):
+        dataset, shuffle=True, augmentation=False):
         'Initialization'
         self.patch_dim = patch_dim
         self.batch_size = batch_size
@@ -167,7 +166,7 @@ class DataGenerator(keras.utils.Sequence):
                                                         W_lower:W_upper, 
                                                         H_lower:H_upper])
 
-        if self.augmentation: # TOREDO
+        if self.augmentation:
 
             #############################################################
             ### Augmentation

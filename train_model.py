@@ -30,7 +30,7 @@ import os
 import h5py
 
 ###############################################
-## Limit memory allocation to minimum needed # TOTEST
+## Limit memory allocation to minimum needed
 ###############################################
 config = tf.ConfigProto()
 config.gpu_options.allow_growth = True
@@ -51,8 +51,8 @@ parser = argparse.ArgumentParser(description='Test a given model')
 # Arguments
 parser.add_argument('-path', '--path_to_main_folder', type=str, required=True,
                     help='Path to the output folder')
-parser.add_argument('-depth', '--model_depth', type=int, required=True,
-                    help='Depth of the model')
+parser.add_argument('-pool', '--number_of_pooling', type=int, required=True,
+                    help='Number of pooling operations')
 parser.add_argument('-oars', '--kind_of_oars', type=str, required=True,
                     help='Kind of oars to predict')
 parser.add_argument('-o', '--optim', type=str, required=True,
@@ -127,7 +127,6 @@ Path(path_to_generated_files).mkdir(parents=True, exist_ok=True)
 # Load IDs of patients with the required 16 oars
 IDs = np.load(os.path.join('stats', 'oars_proportion', '16_oars_IDs.npy')) 
 # 430 patients
-IDs = IDs[:10] # TODO
 
 # Split in train 70%, validation 15%, test 15%
 train_IDs, other_IDs = train_test_split(IDs, test_size=0.3)
@@ -146,25 +145,24 @@ h5_dataset = h5py.File(os.path.join('..', 'data', 'CHUM', 'h5_v3',
                                     'regenerated_dataset.h5'), "r")
 
 n_input_channels= 1
-n_output_channels= 1
 
 params = {'patch_dim': (256, 256, 64),
           'batch_size': 1,
           'dataset': h5_dataset,
-          'shuffle': True,
-          'augmentation': args.augmentation}
+          'shuffle': True}
 
 # Generators
-training_generator = DataGenerator("train", train_IDs, list_oars, **params)
+training_generator = DataGenerator("train", train_IDs, list_oars, **params,
+                                   'augmentation': args.augmentation)
 validation_generator = DataGenerator("validation", validation_IDs, list_oars,
-                                        **params)
+                                     **params)
 
 # Define model
 model = unet_3D(input_shape=(params['patch_dim'][0], 
                              params['patch_dim'][1],
                              params['patch_dim'][2], 
-                             params['n_input_channels']), 
-                model_depth=args.model_depth, 
+                             n_input_channels), 
+                number_of_pooling=args.number_of_pooling, 
                 dropout=args.dropout_value, 
                 optim=args.optim, 
                 lr=args.lr)
