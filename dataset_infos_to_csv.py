@@ -24,7 +24,7 @@ max_value = 0
 #   ID | number of available doses | number of available masks | names of 
 # available masks 
 # | Length | Width | Height | Minimun value | Maximum value | Mean value
-with open('data_infos_test.csv', 'w', newline='') as csv_file:
+with open('data_infos.csv', 'w', newline='') as csv_file:
 #with open('validation_info.csv', 'w', newline='') as csv_file:
     fieldnames = ['ID', 'nb_masks', 'masks_names', 'height', 'ct_min_value', 
                   'ct_max_value', 'ct_mean_value', 'ct_std_value', 

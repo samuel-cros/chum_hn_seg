@@ -8,6 +8,7 @@ from utils.data_standardization import standardize
 # DeepL
 import keras
 import concurrent.futures
+from data_tools.data_augmentation import image_random_transform
 
 # IO
 import h5py
@@ -97,7 +98,9 @@ class DataGenerator(keras.utils.Sequence):
                                  input_shape[2]))
 
         for oar in self.list_oars:
-            dilated_mask += self.dataset[ID + '/dilated_mask/' + oar]
+            dilated_mask = np.logical_or(dilated_mask, 
+                        self.dataset[ID +'/dilated_mask/'+ oar])
+        dilated_mask = dilated_mask.astype(int)
         
         # Pick a nonzero value
         nonzero_values = np.where(dilated_mask)
@@ -166,11 +169,25 @@ class DataGenerator(keras.utils.Sequence):
 
         if self.augmentation: # TOREDO
 
-                #############################################################
-                ### Augmentation
-                #############################################################
-                pass
+            #############################################################
+            ### Augmentation
+            #############################################################
+            # Define args
+            args = dict(spline_warp=True, warp_sigma=50, warp_grid_size=3)
+
+            # Apply transform
+            new_input_a, new_output_a = \
+                image_random_transform(x=new_input[:,:,:,0], 
+                                    y=new_output[:,:,:,0], 
+                                    **args, channel_axis=2)
+
+            # Reformat
+            new_input[:, :, :, 0] = new_input_a[:, :, :]
+            new_output[:, :, :, 0] = new_output_a[:, :, :]
             
+        #############################################################
+        ### Return
+        #############################################################
         return new_input, new_output
 
 ##################################################################
