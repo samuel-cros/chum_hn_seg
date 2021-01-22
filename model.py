@@ -12,6 +12,7 @@ from keras import regularizers
 from tensorflow.keras import losses
 
 from submodules.fcn_maker.fcn_maker.model import assemble_unet
+from submodules.fcn_maker.fcn_maker.model import _l2
 
 ###########################################################################
 ## Losses #################################################################
@@ -31,16 +32,23 @@ def dice_coefficient_loss(y_true, y_pred):
 ###########################################################################
 ## Net ####################################################################
 ###########################################################################
-def unet_3D(input_shape, model_depth, dropout, optim, lr):
-    model = assemble_unet(input_shape=input_shape, init_num_filters=(16, 16), 
+# Assembles a 3D unet and compiles it
+def unet_3D(input_shape, number_of_pooling, dropout, optim, lr):
+    model = assemble_unet(input_shape=input_shape, 
+                          init_num_filters=(16, 16), 
                           num_classes=1, 
-                          num_pooling=int(math.log(model_depth, 2)-4), 
-                          short_skip=False, long_skip=True, 
+                          num_pooling=number_of_pooling, 
+                          short_skip=False, 
+                          long_skip=True, 
                           long_skip_merge_mode='concat',
-                          upsample_mode='conv', dropout=dropout, 
-                          normalization= BatchNormalization, weight_decay=None,
-                          init='he_normal', nonlinearity='relu', 
-                          halve_features_on_upsample=True, ndim=3, 
+                          upsample_mode='conv', 
+                          dropout=dropout, 
+                          normalization= BatchNormalization, 
+                          weight_decay=None,
+                          init='he_normal', 
+                          nonlinearity='relu', 
+                          halve_features_on_upsample=True, 
+                          ndim=3, 
                           verbose=True)
 
     if optim == 'adam':
@@ -57,3 +65,4 @@ def unet_3D(input_shape, model_depth, dropout, optim, lr):
     model.summary()
 
     return model
+

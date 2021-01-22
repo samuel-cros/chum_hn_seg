@@ -13,6 +13,7 @@ import sys
 sys.path.append(os.getcwd())
 import h5py
 import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
 
 # Others
 from utils.data_standardization import standardize
@@ -26,11 +27,11 @@ patch_dim = (256, 256, 64)
 n_output_channels = 1
 n_input_channels = 1
 
-list_oars = ["tronc"]
-ID = '00726'
+list_oars = ["mandibule"]
+ID = '00779'
 
 # Open input file
-dataset = h5py.File(os.path.join('..', '..', 'data', 'CHUM', 'h5_v3', 
+dataset = h5py.File(os.path.join('..', 'data', 'CHUM', 'h5_v3', 
                                  'regenerated_dataset.h5'), "r")
 input_shape = dataset[ID + '/ct'].shape
 
@@ -68,9 +69,9 @@ L_lower = max(0, L)
 W_lower = max(0, W)
 H_lower = max(0, H)
 
-L_upper = min(input_shape[0]-1, L+self.patch_dim[0])
-W_upper = min(input_shape[1]-1, W+self.patch_dim[1])
-H_upper = min(input_shape[2]-1, H+self.patch_dim[2])                                
+L_upper = min(input_shape[0]-1, L+patch_dim[0])
+W_upper = min(input_shape[1]-1, W+patch_dim[1])
+H_upper = min(input_shape[2]-1, H+patch_dim[2])                                
 
 L_dist = L_upper - L_lower
 W_dist = W_upper - W_lower
@@ -111,7 +112,6 @@ new_input[L_offset:L_offset+L_dist,
 ### DISPLAY
 #############################################################
 
-#'''
 # Show dilated mask
 image = None
 for h in range(0, dilated_mask.shape[2], 1):
@@ -124,7 +124,6 @@ for h in range(0, dilated_mask.shape[2], 1):
         plt.title('Slice ' + str(h))
     plt.pause(0.0001)
     plt.draw()
-#'''
 
 # Show new input
 image = None
@@ -151,3 +150,4 @@ for h in range(0, new_output.shape[2], 1):
         plt.title('Slice ' + str(h))
     plt.pause(0.0001)
     plt.draw()
+
