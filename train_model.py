@@ -156,7 +156,7 @@ training_params = {'patch_dim': (256, 256, 64),
 validation_params = {'patch_dim': (256, 256, 64),
           'batch_size': 1,
           'dataset': h5_dataset,
-          'shuffle': True,
+          'shuffle': False,
           'augmentation': False}
 
 # Generators

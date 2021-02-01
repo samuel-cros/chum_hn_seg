@@ -37,6 +37,8 @@ class DataGenerator(keras.utils.Sequence):
         self.augmentation = augmentation
         self.dataset = dataset
         self.on_epoch_end()
+        if train_or_validation == 'validation' and not shuffle:
+            self.shuffle_once()
 
     def __len__(self):
         'Denotes the number of batches per epoch'
@@ -58,8 +60,13 @@ class DataGenerator(keras.utils.Sequence):
     def on_epoch_end(self):
         'Updates indices after each epoch'
         self.indices = np.arange(len(self.list_IDs))
-        if self.shuffle == True:
+        if self.shuffle:
             np.random.shuffle(self.indices)
+
+    def shuffle_once(self):
+        'Updates indices once'
+        self.indices = np.arange(len(self.list_IDs))
+        np.random.shuffle(self.indices)
 
     def __data_generation(self, list_IDs_temp):
         'Generates data containing batch_size samples'

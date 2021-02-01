@@ -120,13 +120,6 @@ def predict_full_volume(model, input_ct, patch_dim):
     overlap_map[overlap_map == 0] = 1
     prediction_mask /= overlap_map
 
-    # Thresholding
-    prediction_mask[prediction_mask > 0.5] = 1
-    prediction_mask[prediction_mask <= 0.5] = 0
-
-    # Convert back to int
-    prediction_mask = prediction_mask.astype(np.int32)
-
     # Denoise using biggest connected component method
     #prediction_mask = getLargestCC(prediction_mask, paired)
 
@@ -257,8 +250,7 @@ for ID in list_IDs:
     input_shape = dataset[ID + '/ct'].shape
     groundtruth_mask = np.zeros((input_shape[0], 
                                 input_shape[1], 
-                                input_shape[2]),
-                                dtype=np.int32)
+                                input_shape[2]))
 
     ## OAR MASK (groundtruth)
     # Sum oar masks in case of paired organs (e.g. eyes)
@@ -295,10 +287,7 @@ for ID in list_IDs:
     # Thresholding
     prediction_mask_acc[prediction_mask_acc > 0.5] = 1
     prediction_mask_acc[prediction_mask_acc <= 0.5] = 0
-
-    # Convert back to int
-    prediction_mask_acc = prediction_mask_acc.astype(np.int32)
-
+    
     ###########################################################################
     ### COMPUTE SCORES
     ###########################################################################

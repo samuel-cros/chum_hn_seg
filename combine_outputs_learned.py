@@ -3,7 +3,9 @@
 import numpy as np
 from skimage.measure import label 
 from utils.data_standardization import standardize
-from sklearn.linear_model import SGDClassifier
+from sklearn.linear_model import SGDClassifier, SGDRegressor
+from sklearn.preprocessing import StandardScaler
+import joblib
 
 # DeepL
 from keras import backend as K
@@ -44,12 +46,13 @@ def getLargestCC(segmentation, paired):
 ###############################################################################
 # PREDICT_FULL_VOLUME
 ###############################################################################
+# assumes patches of shape 256*256*64 and overlaps predictions by 128 pixels
 # basic idea: 
 # - overlap X patches of 256*256*64 within the 512*512*H to get
 #   a prediction over the full volume
 # - to manage the overlapping, we will use a map that saves for each voxel
 #   the number of overlaps so we can reduce the prediction accordingly
-def predict_full_volume(model, input_ct, patch_dim):  
+def predict_full_volume(model, input_ct):  
 
     # Init
     prediction_mask = np.zeros((input_ct.shape[1], 
@@ -76,6 +79,7 @@ def predict_full_volume(model, input_ct, patch_dim):
                                            w:w+patch_dim[1], 
                                            h:h+patch_dim[2],
                                            :])
+
                 # Store prediction
                 prediction_mask[l:l+patch_dim[0],
                                 w:w+patch_dim[1],
@@ -120,13 +124,6 @@ def predict_full_volume(model, input_ct, patch_dim):
     # Average prediction given the overlap map
     overlap_map[overlap_map == 0] = 1
     prediction_mask /= overlap_map
-
-    # Thresholding
-    prediction_mask[prediction_mask > 0.5] = 1
-    prediction_mask[prediction_mask <= 0.5] = 0
-
-    # Convert back to int
-    prediction_mask = prediction_mask.astype(np.int32)
 
     # Denoise using biggest connected component method
     #prediction_mask = getLargestCC(prediction_mask, paired)
@@ -225,10 +222,13 @@ Path(path_to_results).mkdir(parents=True, exist_ok=True)
 ###############################################################################
 ## Output weights file (to save learned weights)
 
-classifier = SGDClassifier()
+# loss='squared_loss', verbose=2 : 0.66 Dice
+# loss='huber' : 0.677 Dice
+# loss='epsilon_insensitive' : 0
+classifier = SGDRegressor(loss='huber', verbose=2) 
 if (args.predict):
-    classifer.set_params(np.load(os.path.join(args.output_path, 
-                                              'classifer_weights.npy')))
+    classifier = joblib.load(os.path.join(args.output_path, 
+                                              'classifier.pkl'))
 
 ###############################################################################
 ## Output csv file (to save scores)
@@ -245,6 +245,7 @@ if (args.predict):
 
 ###############################################################################
 # Define the setup model
+'''
 setup_model = unet_3D(input_shape=(patch_dim[0], 
                                    patch_dim[1], 
                                    patch_dim[2], 
@@ -253,11 +254,20 @@ setup_model = unet_3D(input_shape=(patch_dim[0],
                       dropout=0.0, 
                       optim='adam', 
                       lr=1e-3)
+'''
 
 ###############################################################################
 # Load nets
 list_models = []
 for model_path in args.paths_to_models:
+    setup_model = unet_3D(input_shape=(patch_dim[0], 
+                                       patch_dim[1], 
+                                       patch_dim[2], 
+                                       n_input_channels), 
+                          number_of_pooling=2, 
+                          dropout=0.0, 
+                          optim='adam', 
+                          lr=1e-3)
     setup_model.load_weights(model_path)
     list_models.append(setup_model)
 
@@ -274,8 +284,7 @@ for ID in list_IDs:
     input_shape = dataset[ID + '/ct'].shape
     groundtruth_mask = np.zeros((input_shape[0], 
                                 input_shape[1], 
-                                input_shape[2]),
-                                dtype=np.int32)
+                                input_shape[2]))
 
     ## OAR MASK (groundtruth)
     # Sum oar masks in case of paired organs (e.g. eyes)
@@ -305,35 +314,41 @@ for ID in list_IDs:
     # for each net
     count = 0
     for model in list_models:
-        # Predict full volume
+        ## Predict full volume
+        # assumes patches of shape 256*256*64 and overlaps predictions by 
+        # 128 pixels.
         prediction_mask_acc[count, :, :, :] = \
             predict_full_volume(model, 
-                                input_ct_standardized, 
-                                patch_dim)
+                                input_ct_standardized)
         count += 1
+
+    # Reshape for the classifier
+    X = prediction_mask_acc.reshape(len(list_models),
+                                            np.prod(input_shape)).transpose()
+    y = groundtruth_mask.reshape(np.prod(input_shape)).transpose()
+    X_scaled = StandardScaler().fit_transform(X)
 
     ###########################################################################
     ### TRAIN
     ###########################################################################
     if (args.learn):
-        classifier.fit(prediction_mask_acc.reshape(len(list_models),
-                                                   np.prod(input_shape)).transpose(),
-                       groundtruth_mask.reshape(np.prod(input_shape)))
+        classifier.fit(X_scaled, y)
         print(ID)
 
     ###########################################################################
     ### PREDICT
     ###########################################################################
     if (args.predict):
-        prediction_mask_final = classifier.predict(prediction_mask_acc)
-        prediction_mask_final = prediction_mask_final.reshape(input_shape)      
+        prediction_mask_final = \
+            classifier.predict(X_scaled)
+        prediction_mask_final = \
+            prediction_mask_final.transpose().reshape(input_shape) 
 
-        # Thresholding (shouldn't be needed)
-        #prediction_mask_acc[prediction_mask_acc > 0.5] = 1
-        #prediction_mask_acc[prediction_mask_acc <= 0.5] = 0
+        print(prediction_mask_final[np.nonzero(prediction_mask_final)])
 
-        # Convert back to int (shouldn't be needed)
-        #prediction_mask_acc = prediction_mask_acc.astype(np.int32)
+        # Thresholding
+        prediction_mask_acc[prediction_mask_acc > 0.5] = 1
+        prediction_mask_acc[prediction_mask_acc <= 0.5] = 0
 
         #######################################################################
         ### COMPUTE SCORES
@@ -355,8 +370,10 @@ for ID in list_IDs:
         dice_coeff_acc += dice_coeff
 
 if (args.learn):
-    np.save(os.path.join(args.output_path, 'classifer_weights.npy'), 
-            classifier.get_params())
+    joblib.dump(classifier, os.path.join(args.output_path, 
+                                              'classifier.pkl'))
+
+    # print(classifier.score(X, y)
 
 if (args.predict):
     # Compute average dice coeff across patients
