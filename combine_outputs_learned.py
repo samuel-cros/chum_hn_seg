@@ -3,7 +3,7 @@
 import numpy as np
 from skimage.measure import label 
 from utils.data_standardization import standardize
-from sklearn.linear_model import SGDClassifier, SGDRegressor
+from sklearn.linear_model import SGDRegressor
 from sklearn.preprocessing import StandardScaler
 import joblib
 
@@ -21,27 +21,16 @@ import sys
 import os
 import h5py
 
+###############################################
+## Limit memory allocation to minimum needed
+###############################################
+config = tf.ConfigProto()
+config.gpu_options.allow_growth = True
+session = tf.Session(config=config)
+
 ###############################################################################
 ### SUBROUTINES
 ###############################################################################
-
-###############################################################################
-# GETLARGESTCC
-###############################################################################
-# get the largest connected component
-def getLargestCC(segmentation, paired):
-    labels = label(segmentation)
-    assert( labels.max() != 0 ) # assume at least 1 CC
-    # For unpaired organs get the first CC
-    if not paired:
-        largestCC = labels == np.argmax(np.bincount(labels.flat)[1:])+1
-    # For paired organs get the first two CC
-    else:
-        largestCC = \
-            (labels == np.argsort(np.bincount(labels.flat)[1:])[-1]+1) | \
-            (labels == np.argsort(np.bincount(labels.flat)[1:])[-2]+1)
-    return largestCC.astype(segmentation.dtype)
-
 
 ###############################################################################
 # PREDICT_FULL_VOLUME
@@ -124,9 +113,6 @@ def predict_full_volume(model, input_ct):
     # Average prediction given the overlap map
     overlap_map[overlap_map == 0] = 1
     prediction_mask /= overlap_map
-
-    # Denoise using biggest connected component method
-    #prediction_mask = getLargestCC(prediction_mask, paired)
 
     return prediction_mask
 ###############################################################################
@@ -222,9 +208,6 @@ Path(path_to_results).mkdir(parents=True, exist_ok=True)
 ###############################################################################
 ## Output weights file (to save learned weights)
 
-# loss='squared_loss', verbose=2 : 0.66 Dice
-# loss='huber' : 0.677 Dice
-# loss='epsilon_insensitive' : 0
 classifier = SGDRegressor(loss='huber', verbose=2) 
 if (args.predict):
     classifier = joblib.load(os.path.join(args.output_path, 
@@ -344,11 +327,9 @@ for ID in list_IDs:
         prediction_mask_final = \
             prediction_mask_final.transpose().reshape(input_shape) 
 
-        print(prediction_mask_final[np.nonzero(prediction_mask_final)])
-
         # Thresholding
-        prediction_mask_acc[prediction_mask_acc > 0.5] = 1
-        prediction_mask_acc[prediction_mask_acc <= 0.5] = 0
+        prediction_mask_final[prediction_mask_final > 0.5] = 1
+        prediction_mask_final[prediction_mask_final <= 0.5] = 0
 
         #######################################################################
         ### COMPUTE SCORES
@@ -373,8 +354,6 @@ if (args.learn):
     joblib.dump(classifier, os.path.join(args.output_path, 
                                               'classifier.pkl'))
 
-    # print(classifier.score(X, y)
-
 if (args.predict):
     # Compute average dice coeff across patients
     row['ID'] = 'ALL'
@@ -385,13 +364,3 @@ if (args.predict):
     ### Cleanup
     ###########################################################################
     csv_file.close()
-
-
-'''
-# Show
-fig = plt.figure()
-ax = fig.gca(projection='3d')
-ax.voxels(volume, facecolors='red', edgecolor='k')
-ax.voxels(volume_cc, facecolors='blue', edgecolor='k')
-plt.show()
-'''
