@@ -68,6 +68,6 @@ Folder containing scripts used to compute useful stats on the dataset such as OA
 
 ### Sampling ###
 
-Folder containing scripts used to generate the latest iteration of the dataset that includes dilation maps (that replaced the bounding boxes system).
+Folder containing scripts used to generate the latest iteration of the dataset that includes dilation maps (that replaced the bounding box system).
 
 
