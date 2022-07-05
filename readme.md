@@ -2,6 +2,8 @@
 
 This repository contains the final set of codes that allowed me to produce accurate organ segmentation for Head and Neck (H&N) cancer patients on a dataset provided by the Centre Hospitalier de l'Université de Montréal (CHUM).
 
+See published paper here: https://ieeexplore.ieee.org/document/9433991
+
 ### Train model (train_model.py) ###
 
 Launches training and generates model weights, Dice values (.npy) and curves (.png), train/validation/test IDs.
@@ -54,7 +56,7 @@ Computes a simple averaging of input models.
 * __p__, __paths__ : Multiple string specifying the paths to the different models to average.
 * __output_path__ : A string specifying the folder that will contain the outputs.
 
-### Data gen (data_gen.py) ###
+### Data generator (data_gen.py) ###
 
 Redefinition of keras.utils.Sequence DataGenerator, the main addition being a random sample generation combined with dilated binary maps. Prior to training, we computed a binary volume per patient where the ones indicate the center of a future patch. For that we dilated (see veugene/data_tools/binary_morpholgy) the training target volumes based on our patch-size so that every patch contains a good amount of pixels to predict.
 
